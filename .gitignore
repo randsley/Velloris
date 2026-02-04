@@ -1,0 +1,35 @@
+# --- Python Specific ---
+__pycache__/
+*.py[cod]
+*$py.class
+.venv/
+env/
+venv/
+.env
+
+# --- AI & Models (CRITICAL) ---
+# Do not upload multi-gigabyte model weights to GitHub
+models/
+weights/
+*.bin
+*.pt
+*.pth
+*.gguf
+*.safetensors
+*.ckpt
+
+# --- Audio Data ---
+# Exclude recorded sessions and temporary synthesis
+outputs/
+*.wav
+*.mp3
+*.flac
+!voices/sample_reference.wav  # Keep your default clone sample if desired
+
+# --- OS Specific ---
+.DS_Store
+Thumbs.db
+
+# --- IDEs ---
+.vscode/
+.idea/
