@@ -1,0 +1,18 @@
+# Core Audio & VAD
+sounddevice
+pyaudio
+librosa
+torchaudio
+# silero-vad (commented out as it's loaded via torch.hub.load)
+
+# Model Engines
+transformers
+accelerate
+sentencepiece
+einops
+langchain-community # For Ollama integration
+langchain # For LangGraph/Agents
+
+# Hardware specific (Choose based on OS)
+# For Windows: flash-attn >= 2.5.0, bitsandbytes
+# For Mac: mlx, mlx-audio, mlx-lm
