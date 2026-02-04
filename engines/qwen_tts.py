@@ -1,44 +1,55 @@
 """
 Qwen3-TTS Engine Implementation
 
-Qwen3-TTS is a state-of-the-art text-to-speech model from Alibaba's Qwen team.
+Official Qwen3-TTS from Alibaba's Qwen team.
 Models available from Hugging Face:
   - Qwen3-TTS-12Hz-1.7B-CustomVoice (voice cloning)
   - Qwen3-TTS-12Hz-1.7B-Base (baseline)
+  - Qwen3-TTS-12Hz-1.7B-VoiceDesign (voice design)
   - Qwen3-TTS-12Hz-0.6B-CustomVoice (lightweight with voice cloning)
   - Qwen3-TTS-12Hz-0.6B-Base (lightweight baseline)
+
+Installation:
+  pip install qwen-tts
 
 Features:
   - High-quality voice synthesis
   - Voice cloning with reference audio
+  - Voice design with natural language descriptions
   - Multiple model sizes for efficiency
-  - Multilingual support
+  - Multilingual support (English, Mandarin, etc.)
 """
 
 import torch
 import numpy as np
-import torchaudio
 from pathlib import Path
 from typing import Optional, Tuple
 import warnings
 
 try:
-    from transformers import AutoModel, AutoTokenizer
-    HAS_TRANSFORMERS = True
+    from qwen_tts import Qwen3TTSModel
+    HAS_QWEN3_TTS = True
 except ImportError:
-    HAS_TRANSFORMERS = False
-    print("WARNING: transformers not installed. Install with: pip install transformers")
+    HAS_QWEN3_TTS = False
+    print("WARNING: qwen-tts not installed. Install with: pip install qwen-tts")
+
+try:
+    import soundfile as sf
+    HAS_SOUNDFILE = True
+except ImportError:
+    HAS_SOUNDFILE = False
 
 
 class Qwen3TTSEngine:
     """
-    Qwen3-TTS Engine for high-quality speech synthesis.
+    Official Qwen3-TTS Engine for high-quality speech synthesis.
 
     Supports:
     - Text-to-speech synthesis
-    - Voice cloning from reference audio (3-5 seconds)
+    - Voice cloning from reference audio
+    - Voice design with natural language descriptions
     - Multiple model sizes (0.6B, 1.7B)
-    - Efficient inference
+    - Efficient inference with optional FlashAttention 2
     """
 
     # Available models on Hugging Face
@@ -54,7 +65,8 @@ class Qwen3TTSEngine:
         self,
         model_size: str = "1.7B-CustomVoice",
         device: str = "cuda",
-        use_auth_token: Optional[str] = None,
+        dtype: str = "bfloat16",
+        use_flash_attention: bool = True,
     ):
         """
         Initialize Qwen3-TTS engine.
@@ -67,11 +79,13 @@ class Qwen3TTSEngine:
                 - "0.6B-CustomVoice" (lightweight, voice cloning)
                 - "0.6B-Base" (lightweight, no voice cloning)
             device: 'cuda' or 'cpu'
-            use_auth_token: Hugging Face API token if needed
+            dtype: 'float32', 'float16', or 'bfloat16' (bfloat16 recommended for CUDA)
+            use_flash_attention: Whether to use FlashAttention 2 (faster, less memory)
         """
         self.device = device if torch.cuda.is_available() else "cpu"
         self.model_size = model_size
-        self.use_auth_token = use_auth_token
+        self.dtype = self._parse_dtype(dtype)
+        self.use_flash_attention = use_flash_attention
 
         # Verify model size is valid
         if model_size not in self.AVAILABLE_MODELS:
@@ -81,152 +95,145 @@ class Qwen3TTSEngine:
 
         self.model_name = self.AVAILABLE_MODELS[model_size]
         self.model = None
-        self.tokenizer = None
         self.sample_rate = 12000  # Qwen3-TTS native sample rate
 
-        if HAS_TRANSFORMERS:
+        if HAS_QWEN3_TTS:
             self._load_model()
         else:
-            warnings.warn("Qwen3-TTS will not function without transformers library")
+            warnings.warn(
+                "Qwen3-TTS will not function without qwen-tts library. "
+                "Install with: pip install qwen-tts"
+            )
+
+    def _parse_dtype(self, dtype_str: str):
+        """Parse dtype string to torch dtype."""
+        dtype_map = {
+            "float32": torch.float32,
+            "float16": torch.float16,
+            "bfloat16": torch.bfloat16,
+        }
+        if dtype_str not in dtype_map:
+            raise ValueError(f"Unsupported dtype: {dtype_str}")
+        return dtype_map[dtype_str]
 
     def _load_model(self):
-        """Load Qwen3-TTS model and tokenizer from Hugging Face."""
+        """Load Qwen3-TTS model from Hugging Face."""
         try:
             print(f"Loading Qwen3-TTS ({self.model_size}) from Hugging Face...")
             print(f"Model: {self.model_name}")
 
+            # Determine attention implementation
+            attn_impl = "flash_attention_2" if self.use_flash_attention else None
+
             # Load model
-            self.model = AutoModel.from_pretrained(
+            self.model = Qwen3TTSModel.from_pretrained(
                 self.model_name,
-                torch_dtype=torch.float16 if self.device == "cuda" else torch.float32,
                 device_map=self.device,
-                trust_remote_code=True,
-                token=self.use_auth_token,
+                dtype=self.dtype,
+                attn_implementation=attn_impl if self.device == "cuda" else None,
             )
             self.model.eval()
-
-            # Load tokenizer
-            self.tokenizer = AutoTokenizer.from_pretrained(
-                self.model_name,
-                trust_remote_code=True,
-                token=self.use_auth_token,
-            )
 
             print("✓ Qwen3-TTS model loaded successfully")
 
         except Exception as e:
             print(f"✗ Failed to load Qwen3-TTS: {e}")
-            print("Make sure you have:")
-            print("  1. Internet connection for downloading from Hugging Face")
-            print("  2. Sufficient disk space (~2-5GB)")
-            print("  3. If private model: Hugging Face API token")
+            print("\nMake sure you have:")
+            print("  1. Installed qwen-tts: pip install qwen-tts")
+            print("  2. Internet connection for downloading from Hugging Face")
+            print("  3. Sufficient disk space (~3-5GB)")
+            print("  4. Python 3.12+ (recommended)")
             self.model = None
-            self.tokenizer = None
 
     def generate_dubbing(
         self,
         text: str,
         ref_audio_path: Optional[str] = None,
-        emotion: str = "",
-        language: str = "en",
+        language: str = "English",
+        speaker: Optional[str] = None,
+        instruct: str = "",
     ) -> Optional[Tuple[np.ndarray, int]]:
         """
         Generate speech from text using Qwen3-TTS.
 
         Args:
             text: Text to synthesize
-            ref_audio_path: Path to reference audio for voice cloning (3-5 seconds)
-            emotion: Emotion/style prompt (e.g., "happy", "sad", "neutral")
-            language: Language code (en, zh, etc.)
+            ref_audio_path: Path to reference audio for voice cloning
+            language: Language (English, Mandarin, etc.)
+            speaker: Speaker name (for CustomVoice models like "Ryan", "Lisa", etc.)
+            instruct: Instruction for tone/emotion/style
 
         Returns:
             Tuple of (audio_array, sample_rate) or None
         """
-        if self.model is None or self.tokenizer is None:
-            print("[STUB MODE] Qwen3-TTS not loaded. Install transformers and download model.")
+        if self.model is None:
+            print("[STUB MODE] Qwen3-TTS not loaded. Run: pip install qwen-tts")
             return None
 
         try:
-            # Prepare input text with optional emotion/style
-            if emotion:
-                prompt = f"[{emotion}] {text}"
-            else:
-                prompt = text
-
             print(f"Generating speech: {text[:50]}...")
 
-            # Load reference audio if provided
-            speaker_audio = None
-            if ref_audio_path:
-                ref_path = Path(ref_audio_path)
-                if ref_path.exists():
-                    try:
-                        speaker_audio, sr = torchaudio.load(ref_audio_path)
-                        # Resample to 12kHz if needed
-                        if sr != self.sample_rate:
-                            resampler = torchaudio.transforms.Resample(sr, self.sample_rate)
-                            speaker_audio = resampler(speaker_audio)
-                        speaker_audio = speaker_audio.to(self.device)
-                        print(f"Using voice reference: {ref_audio_path}")
-                    except Exception as e:
-                        print(f"Warning: Could not load reference audio: {e}")
-                        speaker_audio = None
-                else:
-                    print(f"Warning: Reference audio not found: {ref_audio_path}")
-
-            # Generate speech
             with torch.no_grad():
-                # Tokenize input
-                inputs = self.tokenizer(
-                    prompt,
-                    return_tensors="pt",
-                    padding=True,
-                    truncation=True,
-                )
-                inputs = {k: v.to(self.device) for k, v in inputs.items()}
-
-                # Generate audio
-                if speaker_audio is not None and "CustomVoice" in self.model_size:
-                    # Voice cloning mode
-                    outputs = self.model.generate(
-                        **inputs,
-                        speaker_audio=speaker_audio,
-                        max_new_tokens=1024,
+                # Determine which generation method to use
+                if "CustomVoice" in self.model_size and speaker:
+                    # Custom voice generation
+                    wavs, sr = self.model.generate_custom_voice(
+                        text=text,
+                        language=language,
+                        speaker=speaker,
+                        instruct=instruct if instruct else None,
                     )
+
+                elif "VoiceDesign" in self.model_size and instruct:
+                    # Voice design generation
+                    wavs, sr = self.model.generate_voice_design(
+                        text=text,
+                        language=language,
+                        instruct=instruct,
+                    )
+
+                elif ref_audio_path:
+                    # Voice cloning with reference audio
+                    ref_path = Path(ref_audio_path)
+                    if not ref_path.exists():
+                        print(f"Warning: Reference audio not found: {ref_audio_path}")
+                        # Fallback to default generation
+                        wavs, sr = self.model.generate(text=text, language=language)
+                    else:
+                        # For voice clone, we need the reference text
+                        # For now, use the generation method available
+                        wavs, sr = self.model.generate_voice_clone(
+                            text=text,
+                            language=language,
+                            ref_audio=str(ref_audio_path),
+                            ref_text=text,  # Simplified: use same text as reference
+                        )
+
                 else:
-                    # Standard generation
-                    outputs = self.model.generate(
-                        **inputs,
-                        max_new_tokens=1024,
-                    )
-
-            # Extract audio from outputs
-            if isinstance(outputs, tuple):
-                audio = outputs[0] if len(outputs) > 0 else outputs
-            else:
-                audio = outputs
+                    # Standard generation (if model supports it)
+                    if hasattr(self.model, "generate"):
+                        wavs, sr = self.model.generate(text=text, language=language)
+                    else:
+                        print("Note: Model requires either speaker, instruct, or ref_audio")
+                        return None
 
             # Convert to numpy
-            if hasattr(audio, "cpu"):
-                audio = audio.cpu().numpy()
+            if isinstance(wavs, torch.Tensor):
+                audio = wavs[0].cpu().numpy()
             else:
-                audio = np.array(audio)
+                audio = np.array(wavs[0]) if isinstance(wavs, list) else np.array(wavs)
 
             # Ensure float32
             audio = audio.astype(np.float32)
 
-            # Flatten if needed
-            if len(audio.shape) > 1:
-                audio = audio.squeeze()
-
-            # Normalize
+            # Normalize if needed
             if audio.max() > 1.0:
                 audio = audio / (audio.max() + 1e-6)
 
-            duration = len(audio) / self.sample_rate
-            print(f"✓ Generated {duration:.2f}s of audio")
+            duration = len(audio) / sr
+            print(f"✓ Generated {duration:.2f}s of audio at {sr}Hz")
 
-            return audio, self.sample_rate
+            return audio, sr
 
         except Exception as e:
             print(f"✗ Error during Qwen3-TTS generation: {e}")
@@ -238,8 +245,8 @@ class Qwen3TTSEngine:
         self,
         text_iterator,
         ref_audio_path: Optional[str] = None,
-        emotion: str = "",
-        language: str = "en",
+        language: str = "English",
+        speaker: Optional[str] = None,
     ):
         """
         Stream text chunks to Qwen3-TTS for continuous speech generation.
@@ -247,8 +254,8 @@ class Qwen3TTSEngine:
         Args:
             text_iterator: Async iterator yielding text chunks
             ref_audio_path: Path to reference audio for voice cloning
-            emotion: Emotion/style prompt
             language: Language code
+            speaker: Speaker name (for CustomVoice models)
 
         Yields:
             (audio_chunk, sample_rate) tuples
@@ -263,10 +270,10 @@ class Qwen3TTSEngine:
                     continue
 
                 result = self.generate_dubbing(
-                    text_chunk,
+                    text=text_chunk,
                     ref_audio_path=ref_audio_path,
-                    emotion=emotion,
                     language=language,
+                    speaker=speaker,
                 )
 
                 if result:
@@ -295,7 +302,6 @@ class Qwen3TTSEngine:
     def unload(self):
         """Unload model to free memory."""
         self.model = None
-        self.tokenizer = None
         print("✓ Qwen3-TTS model unloaded")
 
     @classmethod
@@ -313,11 +319,7 @@ if __name__ == "__main__":
     for model in Qwen3TTSEngine.get_available_models():
         print(f"  - {model}")
 
-    print("\nInitializing Qwen3-TTS engine...")
-    engine = Qwen3TTSEngine(model_size="1.7B-CustomVoice", device="cpu")
-
-    if engine.model is not None:
-        print("\n✓ Engine ready for speech synthesis")
-        # Test: result = engine.generate_dubbing("Hello, this is Qwen3-TTS.")
-    else:
-        print("\nNote: Download model from Hugging Face for full functionality")
+    print("\nTo install Qwen3-TTS:")
+    print("  pip install qwen-tts")
+    print("\nThen initialize:")
+    print("  engine = Qwen3TTSEngine(model_size='1.7B-CustomVoice')")

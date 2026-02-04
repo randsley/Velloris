@@ -14,9 +14,15 @@ einops>=0.7.0
 langchain-community>=0.0.10
 langchain>=0.1.0
 
-# TTS Engine (Qwen3-TTS from Hugging Face)
-# Models downloaded from: https://huggingface.co/collections/Qwen/qwen3-tts
-# No additional package needed - uses transformers library already installed
+# TTS Engine (Official Qwen3-TTS)
+# Documentation: https://github.com/QwenLM/Qwen3-TTS
+# Models: https://huggingface.co/collections/Qwen/qwen3-tts
+qwen-tts>=0.1.0
+soundfile>=0.12.0
+
+# Optional: FlashAttention 2 for reduced GPU memory usage
+# Install with: pip install flash-attn --no-build-isolation
+# Only works with torch.float16 or torch.bfloat16 on compatible hardware
 
 # STT Engine
 openai-whisper>=20230314
