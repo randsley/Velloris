@@ -4,10 +4,10 @@ import numpy as np
 # Load Silero VAD locally (first time it will download the model)
 # Make sure you have 'sounddevice' and 'torchaudio' installed for proper functioning
 try:
-    model, utils = torch.hub.load(repo_or_dir='snickersane/silero-vad', model='silero_vad', force_reload=False)
+    model, utils = torch.hub.load(repo_or_dir='snakers4/silero-vad', model='silero_vad', force_reload=False)
     (get_speech_timestamps, save_audio, read_audio, VADIterator, collect_chunks) = utils
 except Exception as e:
-    print(f"Could not load Silero VAD. Ensure internet connectivity or 'snickersane/silero-vad' is available locally: {e}")
+    print(f"Could not load Silero VAD. Ensure internet connectivity or 'snakers4/silero-vad' is available locally: {e}")
     # Define dummy functions if VAD can't be loaded to prevent crashes
     class DummyVADIterator:
         def __call__(self, *args, **kwargs):

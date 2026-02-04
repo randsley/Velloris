@@ -1,50 +1,220 @@
-import time
-import torch
-import sounddevice as sd
-import numpy as np
+"""
+Local Voice Orchestrator
 
-# Mock classes for illustration (Replace with actual library imports)
-# from personaplex import PersonaPlexEngine
-# from qwen3_tts import Qwen3TTSModel
+Routes voice requests to appropriate engines based on mode:
+- Interactive: PersonaPlex (low-latency, real-time response)
+- Dubbing: Qwen3-TTS (high-fidelity, voice cloning)
+
+Manages engine lifecycle with lazy loading for memory efficiency.
+"""
+
+import torch
+import numpy as np
+from typing import Optional, Tuple
+from pathlib import Path
+
+from engines.personaplex import PersonaPlexEngine
+from engines.qwen_tts import Qwen3TTSEngine
+
 
 class LocalVoiceOrchestrator:
-    def __init__(self, device="cuda"):
-        self.device = device
-        self.active_engine = None
-        
-        # In a real setup, you'd initialize paths to your local weights here
-        print(f"Initializing Engines on {self.device}...")
-        self.interactive_engine = "PersonaPlex-7B-v1" 
-        self.expressive_engine = "Qwen3-TTS-1.7B"
+    """
+    Orchestrates voice processing across multiple engines.
 
-    def route_request(self, text, mode="interactive"):
+    Routes requests to PersonaPlex (interactive/real-time) or
+    Qwen3-TTS (dubbing/high-fidelity) based on mode.
+
+    Features:
+    - Lazy loading of models (only load when needed)
+    - Memory management (unload when not in use)
+    - Mode-based routing
+    - Voice cloning support
+    """
+
+    def __init__(self, device: str = "cuda", llm_model: str = "llama3"):
         """
-        Logic to switch between models based on task.
+        Initialize the orchestrator.
+
+        Args:
+            device: 'cuda' or 'cpu'
+            llm_model: Ollama model name
+        """
+        self.device = device if torch.cuda.is_available() else "cpu"
+        self.llm_model = llm_model
+
+        # Engine instances (lazy-loaded)
+        self.personaplex_engine: Optional[PersonaPlexEngine] = None
+        self.qwen3_engine: Optional[Qwen3TTSEngine] = None
+
+        print(f"🔧 Orchestrator initialized on {self.device}")
+        print(f"   LLM: {self.llm_model}")
+        print(f"   Interactive mode: PersonaPlex")
+        print(f"   Dubbing mode: Qwen3-TTS (Coqui XTTS-v2)")
+
+    def _load_personaplex(self):
+        """Lazy-load PersonaPlex engine if not already loaded."""
+        if self.personaplex_engine is not None:
+            return
+
+        print("\n📦 Loading PersonaPlex engine for interactive mode...")
+        try:
+            self.personaplex_engine = PersonaPlexEngine(
+                device=self.device, llm_model=self.llm_model
+            )
+            print("✓ PersonaPlex ready")
+        except Exception as e:
+            print(f"✗ Failed to load PersonaPlex: {e}")
+
+    def _load_qwen3(self):
+        """Lazy-load Qwen3-TTS engine if not already loaded."""
+        if self.qwen3_engine is not None:
+            return
+
+        print("\n📦 Loading Qwen3-TTS engine for dubbing mode...")
+        try:
+            self.qwen3_engine = Qwen3TTSEngine(device=self.device)
+            print("✓ Qwen3-TTS ready")
+        except Exception as e:
+            print(f"✗ Failed to load Qwen3-TTS: {e}")
+
+    def unload_engines(self):
+        """Unload all engines to free memory."""
+        if self.personaplex_engine is not None:
+            self.personaplex_engine.unload()
+            self.personaplex_engine = None
+
+        if self.qwen3_engine is not None:
+            # Coqui TTS doesn't have explicit unload, just set to None
+            self.qwen3_engine = None
+
+        print("✓ All engines unloaded")
+
+    def route_request(
+        self, text: str, mode: str = "interactive", ref_audio_path: Optional[str] = None
+    ) -> Optional[Tuple[np.ndarray, int]]:
+        """
+        Route a request to the appropriate engine.
+
+        Args:
+            text: Input text or script
+            mode: 'interactive' for real-time, 'dubbing' for high-fidelity
+            ref_audio_path: Optional reference audio for voice cloning
+
+        Returns:
+            Tuple of (audio_array, sample_rate) or None
         """
         if mode == "interactive":
-            return self._run_personaplex(text)
+            return self._run_personaplex(text, ref_audio_path)
         elif mode == "dubbing":
-            return self._run_qwen3(text)
+            return self._run_qwen3(text, ref_audio_path)
+        else:
+            print(f"Unknown mode: {mode}")
+            return None
 
-    def _run_personaplex(self, text):
-        print(f"--- [Mode: INTERACTIVE] Using {self.interactive_engine} ---")
-        print("Handling low-latency response and potential interruptions...")
-        # Implementation would involve streaming audio chunks
-        return "Audio Stream Started"
+    def _run_personaplex(
+        self, text: str, ref_audio_path: Optional[str] = None
+    ) -> Optional[Tuple[np.ndarray, int]]:
+        """
+        Run PersonaPlex engine for interactive mode.
 
-    def _run_qwen3(self, text, voice_ref="path/to/sample.wav"):
-        print(f"--- [Mode: DUBBING] Using {self.expressive_engine} ---")
-        print(f"Cloning voice from {voice_ref} and generating high-fidelity audio...")
-        # Qwen3 supports 3-second rapid voice cloning here
-        return "High-Fidelity Audio Generated"
+        Args:
+            text: Text/script to process
+            ref_audio_path: Optional reference for voice cloning
 
-# --- Main Application Loop ---
+        Returns:
+            Tuple of (audio, sample_rate) or None
+        """
+        self._load_personaplex()
+
+        if self.personaplex_engine is None:
+            print("✗ PersonaPlex engine not available")
+            return None
+
+        print(f"\n🎯 [INTERACTIVE MODE] Running PersonaPlex")
+        print(f"   Input: {text[:100]}{'...' if len(text) > 100 else ''}")
+
+        try:
+            # For now, just generate speech from the text directly
+            # In a real scenario with audio input, we'd transcribe first
+            result = self.personaplex_engine.generate_speech(text, ref_audio_path)
+
+            if result:
+                audio, sr = result
+                print(f"   Generated: {len(audio) / sr:.2f}s of audio")
+                return audio, sr
+            else:
+                print("   ✗ Failed to generate speech")
+                return None
+
+        except Exception as e:
+            print(f"   ✗ Error: {e}")
+            return None
+
+    def _run_qwen3(
+        self, text: str, ref_audio_path: Optional[str] = None
+    ) -> Optional[Tuple[np.ndarray, int]]:
+        """
+        Run Qwen3-TTS engine for dubbing mode.
+
+        Args:
+            text: Script to narrate
+            ref_audio_path: Reference audio for voice cloning
+
+        Returns:
+            Tuple of (audio, sample_rate) or None
+        """
+        self._load_qwen3()
+
+        if self.qwen3_engine is None:
+            print("✗ Qwen3-TTS engine not available")
+            return None
+
+        print(f"\n🎯 [DUBBING MODE] Running Qwen3-TTS")
+        print(f"   Script: {text[:100]}{'...' if len(text) > 100 else ''}")
+
+        if ref_audio_path:
+            ref_path = Path(ref_audio_path)
+            if ref_path.exists():
+                print(f"   Voice reference: {ref_audio_path}")
+            else:
+                print(f"   Warning: Reference not found, using default voice")
+
+        try:
+            result = self.qwen3_engine.generate_dubbing(
+                text, ref_audio_path, language="en"
+            )
+
+            if result:
+                audio, sr = result
+                print(f"   Generated: {len(audio) / sr:.2f}s of high-fidelity audio")
+                return audio, sr
+            else:
+                print("   ✗ Failed to generate dubbing")
+                return None
+
+        except Exception as e:
+            print(f"   ✗ Error: {e}")
+            return None
+
+
 if __name__ == "__main__":
-    orchestrator = LocalVoiceOrchestrator()
-    
-    # Example 1: User says hello (Interactive)
-    orchestrator.route_request("Hello, how are you today?", mode="interactive")
-    
-    # Example 2: Narrating a story (Expressive Dubbing)
-    script = "Once upon a time in a digital landscape, models lived in harmony..."
-    orchestrator.route_request(script, mode="dubbing")
+    # Test the orchestrator
+    orchestrator = LocalVoiceOrchestrator(device="cpu", llm_model="llama3")
+
+    # Test interactive mode
+    print("\n" + "=" * 50)
+    print("Test 1: Interactive Mode")
+    print("=" * 50)
+    result = orchestrator.route_request(
+        "Hello, how are you today?", mode="interactive"
+    )
+
+    # Test dubbing mode
+    print("\n" + "=" * 50)
+    print("Test 2: Dubbing Mode")
+    print("=" * 50)
+    script = "Once upon a time in a digital landscape, models lived in harmony."
+    result = orchestrator.route_request(script, mode="dubbing")
+
+    # Cleanup
+    orchestrator.unload_engines()

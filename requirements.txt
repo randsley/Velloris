@@ -1,17 +1,29 @@
 # Core Audio & VAD
-sounddevice
-pyaudio
-librosa
-torchaudio
-# silero-vad (commented out as it's loaded via torch.hub.load)
+sounddevice>=0.4.6
+pyaudio>=0.2.13
+librosa>=0.10.0
+torch>=2.0.0
+numpy>=1.24.0
+torchaudio>=2.0.0
 
 # Model Engines
-transformers
-accelerate
-sentencepiece
-einops
-langchain-community # For Ollama integration
-langchain # For LangGraph/Agents
+transformers>=4.36.0
+accelerate>=0.25.0
+sentencepiece>=0.1.99
+einops>=0.7.0
+langchain-community>=0.0.10
+langchain>=0.1.0
+
+# TTS Engine (Coqui as Qwen3-TTS placeholder)
+TTS>=0.22.0
+
+# STT Engine
+openai-whisper>=20230314
+ffmpeg-python>=0.2.0
+
+# Testing (optional)
+pytest>=7.4.0
+pytest-asyncio>=0.21.0
 
 # Hardware specific (Choose based on OS)
 # For Windows: flash-attn >= 2.5.0, bitsandbytes

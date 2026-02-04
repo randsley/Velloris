@@ -1,81 +1,196 @@
+"""
+Qwen3-TTS Engine Implementation
+
+Currently uses Coqui TTS (XTTS-v2) as a placeholder until Qwen3-TTS becomes available.
+Coqui XTTS-v2 supports voice cloning and is a proven, stable TTS solution.
+
+When Qwen3-TTS stabilizes, replace the model loading logic while keeping the interface.
+"""
+
 import torch
 import torchaudio
-from qwen3_tts import Qwen3TTSForConditionalGeneration, Qwen3TTSTokenizer, Qwen3TTSStreamer
+import numpy as np
+from pathlib import Path
+
+try:
+    from TTS.api import TTS
+    HAS_COQUI_TTS = True
+except ImportError:
+    HAS_COQUI_TTS = False
+    print("WARNING: Coqui TTS not installed. Install with: pip install TTS")
+
 
 class Qwen3TTSEngine:
-    def __init__(self, model_size="1.7B", device="cuda"):
-        self.device = device
-        # Load the specialized VoiceDesign/Base model
-        model_id = f"Qwen/Qwen3-TTS-12Hz-{model_size}-Base"
-        
-        print(f"Loading {model_id}...")
-        self.tokenizer = Qwen3TTSTokenizer.from_pretrained(model_id)
-        self.model = Qwen3TTSForConditionalGeneration.from_pretrained(
-            model_id, 
-            torch_dtype=torch.float16, 
-            device_map=device
-        )
-        self.streamer = Qwen3TTSStreamer(model=self.model, tokenizer=self.tokenizer, device=self.device)
+    """
+    TTS Engine using Coqui XTTS-v2 (placeholder for Qwen3-TTS).
 
+    Supports:
+    - Voice cloning from reference audio (3-5 seconds)
+    - Multiple output formats
+    - GPU acceleration
+    - Fallback to CPU mode
+    """
 
-    def generate_dubbing(self, text, ref_audio_path, emotion_prompt=""):
+    def __init__(self, model_size="v2", device="cuda"):
         """
-        Uses Qwen3-TTS 3-second zero-shot cloning with emotional instructions.
-        """
-        # 1. Load the 3-second reference audio
-        ref_audio, sr = torchaudio.load(ref_audio_path)
-        
-        # 2. Prepare the prompt (Text + Style Instruction)
-        # Example emotion_prompt: "Speak with a trembling, fearful voice"
-        full_prompt = f"[{emotion_prompt}] {text}" if emotion_prompt else text
-        
-        inputs = self.tokenizer(
-            text=full_prompt,
-            audio=ref_audio,
-            return_tensors="pt"
-        ).to(self.device)
+        Initialize the TTS engine.
 
-        # 3. Generate with VoiceDesign/Cloning capabilities
-        with torch.no_grad():
-            output = self.model.generate(**inputs)
-        
-        return output # Audio tensor
+        Args:
+            model_size: Model variant (v2 for XTTS-v2)
+            device: 'cuda' or 'cpu'
+        """
+        self.device = device if torch.cuda.is_available() else "cpu"
+        self.model_size = model_size
 
-    async def stream_text_to_speech(self, text_iterator, ref_audio_path=None, emotion_prompt=""):
+        if not HAS_COQUI_TTS:
+            print("TTS engine will run in stub mode (generate_dubbing returns None)")
+            self.model = None
+            return
+
+        print(f"Loading Coqui TTS (XTTS-v2) on {self.device}...")
+        try:
+            # Load Coqui XTTS-v2 model
+            # This model supports multilingual and voice cloning
+            self.model = TTS(
+                model_name="tts_models/multilingual/multi-dataset/xtts_v2",
+                device=self.device,
+                progress_bar=True,
+                gpu=self.device == "cuda",
+            )
+            print("✓ Coqui TTS model loaded successfully")
+        except Exception as e:
+            print(f"Failed to load TTS model: {e}")
+            self.model = None
+
+    def generate_dubbing(self, text, ref_audio_path=None, emotion_prompt="", language="en"):
         """
-        Streams text chunks from an iterator to Qwen3-TTS for continuous speech generation.
+        Generates high-fidelity speech from text with optional voice cloning.
+
+        Args:
+            text: Text to synthesize
+            ref_audio_path: Path to 3-5 second reference audio for voice cloning
+            emotion_prompt: Optional style instruction (future Qwen3 feature)
+            language: Language code (en, es, fr, de, etc.)
+
+        Returns:
+            Tuple of (audio_array, sample_rate) or None if TTS not available
         """
-        # If reference audio is provided, it will be used for cloning
-        ref_audio = None
+        if self.model is None:
+            print(f"[STUB MODE] Would generate TTS for: {text}")
+            return None
+
+        try:
+            # Use reference audio for voice cloning if provided
+            speaker_wav = None
+            if ref_audio_path:
+                ref_path = Path(ref_audio_path)
+                if ref_path.exists():
+                    speaker_wav = str(ref_audio_path)
+                    print(f"Using voice reference from: {ref_audio_path}")
+                else:
+                    print(f"Warning: Reference audio not found at {ref_audio_path}, using default voice")
+
+            # Generate speech
+            # Note: emotion_prompt is a placeholder for future Qwen3 features
+            output_path = "/tmp/tts_output.wav"
+
+            self.model.tts_to_file(
+                text=text,
+                speaker_wav=speaker_wav,
+                language=language,
+                file_path=output_path,
+            )
+
+            # Load generated audio
+            audio, sr = torchaudio.load(output_path)
+            audio = audio.cpu().numpy().astype(np.float32)
+
+            # If stereo, convert to mono
+            if audio.shape[0] > 1:
+                audio = audio.mean(axis=0)
+            else:
+                audio = audio.squeeze()
+
+            print(f"✓ Generated {len(audio) / sr:.2f}s of audio at {sr}Hz")
+            return audio, sr
+
+        except Exception as e:
+            print(f"Error during TTS generation: {e}")
+            return None
+
+    async def stream_text_to_speech(
+        self, text_iterator, ref_audio_path=None, emotion_prompt="", language="en"
+    ):
+        """
+        Streams text chunks to TTS for continuous speech generation.
+
+        Args:
+            text_iterator: Iterator yielding text chunks
+            ref_audio_path: Path to reference audio for voice cloning
+            emotion_prompt: Optional style instruction
+            language: Language code
+
+        Yields:
+            (audio_chunk, sample_rate) tuples
+        """
+        if self.model is None:
+            print("[STUB MODE] Stream TTS not available")
+            return
+
+        speaker_wav = None
         if ref_audio_path:
-            ref_audio, sr = torchaudio.load(ref_audio_path)
-            ref_audio = ref_audio.to(self.device)
+            ref_path = Path(ref_audio_path)
+            if ref_path.exists():
+                speaker_wav = str(ref_audio_path)
 
-        full_prompt_prefix = f"[{emotion_prompt}] " if emotion_prompt else ""
-        
         for text_chunk in text_iterator:
-            # Prepare the prompt (Text + Style Instruction)
-            full_prompt = full_prompt_prefix + text_chunk
-            
-            inputs = self.tokenizer(
-                text=full_prompt,
-                audio=ref_audio,
-                return_tensors="pt"
-            ).to(self.device)
-            
-            # This is a simplified example; actual streaming would involve
-            # feeding tokens to the streamer incrementally.
-            # The Qwen3TTSStreamer expects push_text or similar.
-            # For this boilerplate, we'll simulate for now.
-            # In a real setup, `self.streamer` would handle this.
-            print(f"Qwen3-TTS streaming: {text_chunk}")
-            
-        print("Qwen3-TTS streaming finalized.")
-        # self.streamer.finalize() # Call finalize on the actual streamer
+            if not text_chunk.strip():
+                continue
 
-# Usage Example (if this file were run directly for testing)
+            try:
+                output_path = "/tmp/tts_chunk_output.wav"
+
+                self.model.tts_to_file(
+                    text=text_chunk,
+                    speaker_wav=speaker_wav,
+                    language=language,
+                    file_path=output_path,
+                )
+
+                audio, sr = torchaudio.load(output_path)
+                audio = audio.cpu().numpy().astype(np.float32)
+
+                if audio.shape[0] > 1:
+                    audio = audio.mean(axis=0)
+                else:
+                    audio = audio.squeeze()
+
+                yield audio, sr
+
+            except Exception as e:
+                print(f"Error streaming TTS chunk: {e}")
+
+    def _resample_audio(self, audio, sr_from, sr_to):
+        """Resample audio to target sample rate."""
+        if sr_from == sr_to:
+            return audio
+
+        resampler = torchaudio.transforms.Resample(sr_from, sr_to)
+        audio_tensor = torch.from_numpy(audio).unsqueeze(0)
+        resampled = resampler(audio_tensor)
+        return resampled.squeeze().numpy()
+
+
+# Backward compatibility alias
+Qwen3TTSStreamer = Qwen3TTSEngine
+
+
 if __name__ == "__main__":
-    # This block won't run as part of the orchestrator, but for local testing
-    # you'd need to mock/provide a ref_audio_path and an actual text iterator.
-    print("Qwen3TTSEngine boilerplate created.")
+    # Test the TTS engine
+    engine = Qwen3TTSEngine(device="cpu")
 
+    # Test without reference audio
+    result = engine.generate_dubbing("Hello, this is a test of the Qwen3 TTS engine.")
+    if result:
+        audio, sr = result
+        print(f"Generated audio shape: {audio.shape}, sample rate: {sr}")
