@@ -33,3 +33,6 @@ Thumbs.db
 # --- IDEs ---
 .vscode/
 .idea/
+
+# --- Other files ---
+Dual-Engine*.md
