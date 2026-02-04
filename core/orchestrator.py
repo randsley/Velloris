@@ -48,8 +48,8 @@ class LocalVoiceOrchestrator:
 
         print(f"🔧 Orchestrator initialized on {self.device}")
         print(f"   LLM: {self.llm_model}")
-        print(f"   Interactive mode: PersonaPlex")
-        print(f"   Dubbing mode: Qwen3-TTS (Coqui XTTS-v2)")
+        print(f"   Interactive mode: PersonaPlex (Whisper + Ollama + Qwen3-TTS)")
+        print(f"   Dubbing mode: Qwen3-TTS (from Hugging Face)")
 
     def _load_personaplex(self):
         """Lazy-load PersonaPlex engine if not already loaded."""

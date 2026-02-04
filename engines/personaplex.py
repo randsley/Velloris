@@ -24,10 +24,10 @@ except ImportError:
     HAS_WHISPER = False
 
 try:
-    from TTS.api import TTS
-    HAS_COQUI_TTS = True
+    from transformers import AutoModel, AutoTokenizer
+    HAS_QWEN3_TTS = True
 except ImportError:
-    HAS_COQUI_TTS = False
+    HAS_QWEN3_TTS = False
 
 from langchain_community.llms import Ollama
 
@@ -99,22 +99,24 @@ class PersonaPlexEngine:
             print("Make sure Ollama is running: ollama serve")
 
     def _load_tts(self):
-        """Load TTS model."""
-        if not HAS_COQUI_TTS:
-            print("WARNING: Coqui TTS not available. TTS will not work.")
+        """Load Qwen3-TTS model."""
+        if not HAS_QWEN3_TTS:
+            print("WARNING: transformers not available. TTS will not work.")
             return
 
         try:
-            print(f"Loading Coqui TTS (XTTS-{self.tts_model_name}) for speech synthesis...")
-            self.tts_model = TTS(
-                model_name="tts_models/multilingual/multi-dataset/xtts_v2",
+            print(f"Loading Qwen3-TTS for speech synthesis...")
+            # Import here to avoid circular dependency
+            from engines.qwen_tts import Qwen3TTSEngine
+
+            self.tts_model = Qwen3TTSEngine(
+                model_size="1.7B-CustomVoice",
                 device=self.device,
-                progress_bar=False,
-                gpu=self.device == "cuda",
             )
-            print("✓ Coqui TTS loaded successfully")
+            print("✓ Qwen3-TTS loaded successfully")
         except Exception as e:
-            print(f"Failed to load Coqui TTS: {e}")
+            print(f"Failed to load Qwen3-TTS: {e}")
+            self.tts_model = None
 
     def transcribe_audio(self, audio: np.ndarray, sr: int = 16000) -> str:
         """
@@ -154,12 +156,12 @@ class PersonaPlexEngine:
         language: str = "en",
     ) -> Optional[Tuple[np.ndarray, int]]:
         """
-        Generate speech from text using Coqui TTS.
+        Generate speech from text using Qwen3-TTS.
 
         Args:
             text: Text to synthesize
             ref_audio_path: Optional path to reference audio for voice cloning
-            emotion: Optional emotion/style prompt
+            emotion: Optional emotion/style prompt (e.g., "happy", "sad", "neutral")
             language: Language code
 
         Returns:
@@ -170,32 +172,14 @@ class PersonaPlexEngine:
             return None
 
         try:
-            speaker_wav = None
-            if ref_audio_path:
-                from pathlib import Path
-                if Path(ref_audio_path).exists():
-                    speaker_wav = ref_audio_path
-
-            output_path = "/tmp/personaplex_tts_output.wav"
-
-            self.tts_model.tts_to_file(
+            result = self.tts_model.generate_dubbing(
                 text=text,
-                speaker_wav=speaker_wav,
+                ref_audio_path=ref_audio_path,
+                emotion=emotion,
                 language=language,
-                file_path=output_path,
             )
 
-            import torchaudio
-            audio, sr = torchaudio.load(output_path)
-            audio = audio.cpu().numpy().astype(np.float32)
-
-            # Convert to mono if needed
-            if audio.shape[0] > 1:
-                audio = audio.mean(axis=0)
-            else:
-                audio = audio.squeeze()
-
-            return audio, sr
+            return result
 
         except Exception as e:
             print(f"TTS generation error: {e}")
@@ -208,7 +192,7 @@ class PersonaPlexEngine:
         language: str = "en",
     ) -> AsyncIterator[Tuple[np.ndarray, int]]:
         """
-        Stream speech-to-speech processing.
+        Stream speech-to-speech processing using Qwen3-TTS.
 
         Takes a stream of text chunks and yields audio chunks.
 
@@ -220,45 +204,27 @@ class PersonaPlexEngine:
         Yields:
             Tuples of (audio_chunk, sample_rate)
         """
-        try:
-            speaker_wav = None
-            if ref_audio_path:
-                from pathlib import Path
-                if Path(ref_audio_path).exists():
-                    speaker_wav = ref_audio_path
+        if self.tts_model is None:
+            print("TTS model not available")
+            async for text_chunk in text_iterator:
+                yield np.array([], dtype=np.float32), 12000
+            return
 
+        try:
             async for text_chunk in text_iterator:
                 if not text_chunk.strip():
                     continue
 
-                if self.tts_model is None:
-                    yield np.array([], dtype=np.float32), 24000
-                    continue
+                result = self.tts_model.generate_dubbing(
+                    text=text_chunk,
+                    ref_audio_path=ref_audio_path,
+                    language=language,
+                )
 
-                try:
-                    output_path = "/tmp/personaplex_tts_chunk.wav"
-
-                    self.tts_model.tts_to_file(
-                        text=text_chunk,
-                        speaker_wav=speaker_wav,
-                        language=language,
-                        file_path=output_path,
-                    )
-
-                    import torchaudio
-                    audio, sr = torchaudio.load(output_path)
-                    audio = audio.cpu().numpy().astype(np.float32)
-
-                    if audio.shape[0] > 1:
-                        audio = audio.mean(axis=0)
-                    else:
-                        audio = audio.squeeze()
-
-                    yield audio, sr
-
-                except Exception as e:
-                    print(f"Error streaming chunk: {e}")
-                    yield np.array([], dtype=np.float32), 24000
+                if result:
+                    yield result
+                else:
+                    yield np.array([], dtype=np.float32), 12000
 
         except Exception as e:
             print(f"Stream S2S error: {e}")
