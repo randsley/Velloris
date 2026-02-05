@@ -209,6 +209,7 @@ Audio Output → Speaker 🔊
 - **Installation**: Run `./install_macos.sh`
 - **Device Selection**: `--device mps` (auto-selected)
 - **Note**: PersonaPlex runs slower on MPS; Qwen3-TTS works well
+- **Research**: Exploring [MLX Stack](https://ml-explore.github.io/mlx/) (Apple's ML framework) for optimized M-series inference. Could provide 2-3x speedup vs PyTorch MPS.
 
 ### Linux (CPU/CUDA)
 - **CPU Mode**: Works on any Linux
@@ -271,6 +272,7 @@ pytest tests/test_pipeline.py --cov=. -v
 
 ## 🚀 What's Next?
 
+- [ ] **MLX Stack Integration** (macOS): Research & implement MLX for 2-3x speedup on M-series Macs
 - [ ] Web UI with Gradio
 - [ ] ONNX export for edge deployment
 - [ ] Mobile optimization (iOS/Android)
