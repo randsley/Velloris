@@ -83,15 +83,31 @@ class ApplicationConfig:
     """Application-level configuration."""
 
     # Mode settings
-    DEFAULT_MODE = "interactive"  # interactive, dubbing
-    MODES = ["interactive", "dubbing"]
+    DEFAULT_MODE = os.getenv("DEFAULT_MODE", "realtime")  # realtime, dubbing, creative
+    MODES = ["realtime", "dubbing", "creative"]
 
-    # Interactive mode settings
-    INTERACTIVE_TIMEOUT = 30.0  # Timeout for user input (seconds)
-    RESPONSE_TIMEOUT = 120.0  # Timeout for AI response (seconds)
+    # Real-time mode settings (PersonaPlex end-to-end S2S)
+    REALTIME_VOICE = os.getenv("REALTIME_VOICE", "NATF2")  # Default voice
+    REALTIME_PERSONA = os.getenv(
+        "REALTIME_PERSONA",
+        "You are a helpful and friendly AI assistant."
+    )
+    REALTIME_STREAMING = True  # Enable streaming for full-duplex
+    REALTIME_TIMEOUT = 30.0  # Timeout for user input (seconds)
+    REALTIME_SAMPLE_RATE = 24000  # PersonaPlex native sample rate
 
-    # Dubbing mode settings
+    # Creative mode settings (Ollama + Qwen3-TTS)
+    CREATIVE_LLM = os.getenv("CREATIVE_LLM", "llama3")
+    CREATIVE_DEFAULT_EMOTION = os.getenv("CREATIVE_EMOTION", "")
+    CREATIVE_TIMEOUT = 120.0  # Timeout for LLM response (seconds)
+
+    # Dubbing mode settings (Qwen3-TTS high-fidelity)
     DUBBING_CHUNK_SIZE = 256  # Process script in chunks
+    DUBBING_TIMEOUT = 60.0  # Timeout for TTS generation
+
+    # Backward compatibility (deprecated)
+    INTERACTIVE_TIMEOUT = 30.0  # DEPRECATED: Use REALTIME_TIMEOUT or CREATIVE_TIMEOUT
+    RESPONSE_TIMEOUT = 120.0  # DEPRECATED: Use CREATIVE_TIMEOUT
 
     # Logging
     LOG_LEVEL = os.getenv("LOG_LEVEL", "INFO")
@@ -177,8 +193,20 @@ class Config:
         print(f"  Barge-in: {cls.vad.ENABLE_BARGE_IN}")
 
         print("\nApplication:")
-        print(f"  Mode: {cls.app.DEFAULT_MODE}")
-        print(f"  Log Level: {cls.app.LOG_LEVEL}\n")
+        print(f"  Default Mode: {cls.app.DEFAULT_MODE}")
+        print(f"  Available Modes: {', '.join(cls.app.MODES)}")
+        print(f"  Log Level: {cls.app.LOG_LEVEL}")
+
+        print("\nMode Settings:")
+        print(f"  Real-Time:")
+        print(f"    Voice: {cls.app.REALTIME_VOICE}")
+        print(f"    Persona: {cls.app.REALTIME_PERSONA[:50]}...")
+        print(f"    Streaming: {cls.app.REALTIME_STREAMING}")
+        print(f"  Creative:")
+        print(f"    LLM: {cls.app.CREATIVE_LLM}")
+        print(f"    Emotion: {cls.app.CREATIVE_DEFAULT_EMOTION or 'None'}")
+        print(f"  Dubbing:")
+        print(f"    Chunk Size: {cls.app.DUBBING_CHUNK_SIZE}\n")
 
 
 if __name__ == "__main__":
