@@ -197,21 +197,23 @@ class Qwen3TTSEngine:
 
             with torch.no_grad():
                 # Determine which generation method to use
-                if "CustomVoice" in self.model_size and speaker:
-                    # Custom voice generation
+                if "CustomVoice" in self.model_size:
+                    # Custom voice generation (use provided speaker or default to "Ryan")
+                    default_speaker = "Ryan"
                     wavs, sr = self.model.generate_custom_voice(
                         text=text,
                         language=language,
-                        speaker=speaker,
+                        speaker=speaker or default_speaker,
                         instruct=instruct if instruct else None,
                     )
 
-                elif "VoiceDesign" in self.model_size and instruct:
-                    # Voice design generation
+                elif "VoiceDesign" in self.model_size:
+                    # Voice design generation (use provided instruct or default)
+                    default_instruct = "A clear and professional voice"
                     wavs, sr = self.model.generate_voice_design(
                         text=text,
                         language=language,
-                        instruct=instruct,
+                        instruct=instruct or default_instruct,
                     )
 
                 elif ref_audio_path:
@@ -219,8 +221,12 @@ class Qwen3TTSEngine:
                     ref_path = Path(ref_audio_path)
                     if not ref_path.exists():
                         print(f"Warning: Reference audio not found: {ref_audio_path}")
-                        # Fallback to default generation
-                        wavs, sr = self.model.generate(text=text, language=language)
+                        # Fallback to default speaker for CustomVoice or default instruct for VoiceDesign
+                        wavs, sr = self.model.generate_custom_voice(
+                            text=text,
+                            language=language,
+                            speaker=speaker or "Ryan",
+                        )
                     else:
                         # For voice clone, we need the reference text
                         # For now, use the generation method available
@@ -232,9 +238,13 @@ class Qwen3TTSEngine:
                         )
 
                 else:
-                    # Standard generation (if model supports it)
-                    if hasattr(self.model, "generate"):
-                        wavs, sr = self.model.generate(text=text, language=language)
+                    # Fallback: use default speaker for CustomVoice models
+                    if "CustomVoice" in self.model_size:
+                        wavs, sr = self.model.generate_custom_voice(
+                            text=text,
+                            language=language,
+                            speaker="Ryan",
+                        )
                     else:
                         print("Note: Model requires either speaker, instruct, or ref_audio")
                         return None
