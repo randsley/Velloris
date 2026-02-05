@@ -7,6 +7,7 @@ Centralized configuration for audio settings, model settings, and VAD parameters
 import os
 from pathlib import Path
 from typing import Optional
+from utils.device_utils import get_optimal_device, get_optimal_dtype, get_platform_info
 
 
 class AudioConfig:
@@ -46,9 +47,14 @@ class ModelConfig:
     TTS_MODEL = "v2"  # XTTS-v2 variant
     TTS_LANGUAGE = "en"  # Default language
 
-    # Device settings
-    DEVICE = os.getenv("DEFAULT_DEVICE", "cuda")  # cuda, cpu, mps
-    DTYPE = "float16" if DEVICE == "cuda" else "float32"
+    # Device settings (auto-detect if not specified)
+    _requested_device = os.getenv("DEFAULT_DEVICE", "auto")
+    DEVICE = get_optimal_device(_requested_device)
+    _dtype_obj = get_optimal_dtype(DEVICE)
+    DTYPE = str(_dtype_obj).split('.')[-1]  # "float32", "float16", or "bfloat16"
+
+    # Platform info
+    PLATFORM_INFO = get_platform_info()
 
     # Paths
     MODELS_DIR = Path.home() / ".cache" / "velloris" / "models"
@@ -125,7 +131,7 @@ class Config:
         if cls.model.WHISPER_MODEL not in valid_whisper:
             errors.append(f"Invalid WHISPER_MODEL: {cls.model.WHISPER_MODEL}")
 
-        # Check device
+        # Check device (DEVICE is already validated and resolved by get_optimal_device)
         valid_devices = ["cuda", "cpu", "mps"]
         if cls.model.DEVICE not in valid_devices:
             errors.append(f"Invalid DEVICE: {cls.model.DEVICE}")
@@ -146,6 +152,14 @@ class Config:
     def print_config(cls):
         """Print current configuration."""
         print("\n=== Velloris Configuration ===")
+
+        # Platform info
+        print("\nPlatform:")
+        print(f"  OS: {cls.model.PLATFORM_INFO['os']} ({cls.model.PLATFORM_INFO['machine']})")
+        print(f"  Python: {cls.model.PLATFORM_INFO['python_version']}")
+        print(f"  CUDA Available: {cls.model.PLATFORM_INFO['cuda_available']}")
+        print(f"  MPS Available: {cls.model.PLATFORM_INFO['mps_available']}")
+
         print("\nAudio:")
         print(f"  Input SR: {cls.audio.INPUT_SAMPLE_RATE} Hz")
         print(f"  Output SR: {cls.audio.OUTPUT_SAMPLE_RATE} Hz")
@@ -155,6 +169,7 @@ class Config:
         print(f"  Whisper: {cls.model.WHISPER_MODEL}")
         print(f"  LLM: {cls.model.OLLAMA_MODEL}")
         print(f"  Device: {cls.model.DEVICE}")
+        print(f"  Dtype: {cls.model.DTYPE}")
         print(f"  Ollama: {cls.model.OLLAMA_HOST}")
 
         print("\nVAD:")

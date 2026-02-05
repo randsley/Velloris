@@ -208,6 +208,11 @@ class VellorisApplication:
         print(f"   Device: {self.args.device}")
         print(f"   LLM: {self.args.llm_model}")
 
+        # Show platform info if verbose
+        from utils.device_utils import get_platform_info
+        platform_info = get_platform_info()
+        print(f"   Platform: {platform_info['os']} ({platform_info['machine']})")
+
         if self.args.mode == "interactive":
             await self.run_interactive()
         elif self.args.mode == "dubbing":
@@ -252,9 +257,9 @@ For full documentation, see README.md
     parser.add_argument(
         "--device",
         type=str,
-        default=Config.model.DEVICE,
-        choices=["cuda", "cpu", "mps"],
-        help="Device to use (cuda for GPU, cpu for CPU, mps for Apple Metal)",
+        default="auto",
+        choices=["cuda", "cpu", "mps", "auto"],
+        help="Device to use: cuda (NVIDIA GPU), mps (Apple Metal), cpu (CPU), or auto (detect)",
     )
 
     # Model arguments

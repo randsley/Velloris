@@ -1,10 +1,24 @@
+# ==========================================
+# Velloris Requirements
+#
+# Platform-specific installation:
+#   Windows (CUDA): run install_windows.bat
+#   macOS (Metal):  run install_macos.sh
+#   Linux (CUDA):   run install_windows.bat (same as Windows)
+# ==========================================
+
 # Core Audio & VAD
 sounddevice>=0.4.6
 pyaudio>=0.2.13
 librosa>=0.10.0
-torch>=2.0.0
 numpy>=1.24.0
 torchaudio>=2.0.0
+
+# PyTorch (Version >= 2.0.0)
+# Installation varies by platform:
+#   Windows CUDA 12.1: pip install torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cu121
+#   macOS/Linux:       pip install torch torchvision torchaudio
+torch>=2.0.0
 
 # Model Engines
 transformers>=4.36.0
@@ -20,18 +34,36 @@ langchain>=0.1.0
 qwen-tts>=0.1.0
 soundfile>=0.12.0
 
-# Optional: FlashAttention 2 for reduced GPU memory usage
-# Install with: pip install flash-attn --no-build-isolation
-# Only works with torch.float16 or torch.bfloat16 on compatible hardware
-
-# STT Engine
+# STT Engine (Whisper)
 openai-whisper>=20230314
 ffmpeg-python>=0.2.0
 
-# Testing (optional)
+# PersonaPlex-7B (NVIDIA's Real-Time Speech-to-Speech)
+# Installation: git clone https://github.com/NVIDIA/personaplex && pip install personaplex/moshi/.
+# System dependency (macOS): brew install opus
+# GPU requirement: NVIDIA Ampere or newer (A100, H100, etc.)
+# Note: Requires license acceptance on Hugging Face
+
+# Testing
 pytest>=7.4.0
 pytest-asyncio>=0.21.0
 
-# Hardware specific (Choose based on OS)
-# For Windows: flash-attn >= 2.5.0, bitsandbytes
-# For Mac: mlx, mlx-audio, mlx-lm
+# ==========================================
+# Optional Performance Packages
+# ==========================================
+
+# Windows/Linux with NVIDIA GPU (CUDA):
+#   pip install flash-attn --no-build-isolation
+#   pip install bitsandbytes
+#
+# What they do:
+#   - flash-attn: 2-3x faster inference, reduced VRAM
+#   - bitsandbytes: 4-bit quantization (60% less VRAM)
+
+# macOS with M-series (Metal):
+#   pip install mlx mlx-audio mlx-lm
+#
+# What it does:
+#   - MLX: Apple's optimized ML framework for M-series
+#   - mlx-audio: Audio processing with MLX
+#   - mlx-lm: Large language model optimizations

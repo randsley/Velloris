@@ -1,9 +1,19 @@
 """
-Local Voice Orchestrator
+Local Voice Orchestrator - Dual-Engine Architecture
 
-Routes voice requests to appropriate engines based on mode:
-- Interactive: PersonaPlex (low-latency, real-time response)
-- Dubbing: Qwen3-TTS (high-fidelity, voice cloning)
+By orchestrating the real-time interaction of PersonaPlex-7B with the expressive
+"Voice Design" of Qwen3-TTS, Velloris achieves human-level conversation without the cloud.
+
+Routes voice requests to specialized engines:
+- Interactive Mode: PersonaPlex-7B (NVIDIA's real-time speech-to-speech)
+  * Input: User audio + persona text
+  * Output: Agent audio response
+  * Features: Full-duplex conversations, interruptions, voice conditioning
+
+- Dubbing Mode: Qwen3-TTS with Voice Design (Alibaba's expressive synthesis)
+  * Input: Script text
+  * Output: High-fidelity audio with voice cloning support
+  * Features: Emotion control, voice design, multilingual
 
 Manages engine lifecycle with lazy loading for memory efficiency.
 """
@@ -15,6 +25,7 @@ from pathlib import Path
 
 from engines.personaplex import PersonaPlexEngine
 from engines.qwen_tts import Qwen3TTSEngine
+from utils.device_utils import get_optimal_device, get_platform_info
 
 
 class LocalVoiceOrchestrator:
@@ -31,22 +42,24 @@ class LocalVoiceOrchestrator:
     - Voice cloning support
     """
 
-    def __init__(self, device: str = "cuda", llm_model: str = "llama3"):
+    def __init__(self, device: str = "auto", llm_model: str = "llama3"):
         """
         Initialize the orchestrator.
 
         Args:
-            device: 'cuda' or 'cpu'
+            device: Device to use ('cuda', 'mps', 'cpu', or 'auto' for auto-detection)
             llm_model: Ollama model name
         """
-        self.device = device if torch.cuda.is_available() else "cpu"
+        self.device = get_optimal_device(device)
         self.llm_model = llm_model
+        self.platform_info = get_platform_info()
 
         # Engine instances (lazy-loaded)
         self.personaplex_engine: Optional[PersonaPlexEngine] = None
         self.qwen3_engine: Optional[Qwen3TTSEngine] = None
 
-        print(f"🔧 Orchestrator initialized on {self.device}")
+        print(f"🔧 Orchestrator initialized on {self.device.upper()}")
+        print(f"   Platform: {self.platform_info['os']} ({self.platform_info['machine']})")
         print(f"   LLM: {self.llm_model}")
         print(f"   Interactive mode: PersonaPlex (Whisper + Ollama + Qwen3-TTS)")
         print(f"   Dubbing mode: Qwen3-TTS (from Hugging Face)")

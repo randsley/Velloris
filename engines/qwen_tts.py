@@ -26,6 +26,8 @@ from pathlib import Path
 from typing import Optional, Tuple
 import warnings
 
+from utils.device_utils import get_optimal_device, get_optimal_dtype, validate_flash_attention
+
 try:
     from qwen_tts import Qwen3TTSModel
     HAS_QWEN3_TTS = True
@@ -64,8 +66,8 @@ class Qwen3TTSEngine:
     def __init__(
         self,
         model_size: str = "1.7B-CustomVoice",
-        device: str = "cuda",
-        dtype: str = "bfloat16",
+        device: str = "auto",
+        dtype: str = "auto",
         use_flash_attention: bool = True,
     ):
         """
@@ -78,14 +80,25 @@ class Qwen3TTSEngine:
                 - "1.7B-VoiceDesign" (design-oriented voices)
                 - "0.6B-CustomVoice" (lightweight, voice cloning)
                 - "0.6B-Base" (lightweight, no voice cloning)
-            device: 'cuda' or 'cpu'
-            dtype: 'float32', 'float16', or 'bfloat16' (bfloat16 recommended for CUDA)
+            device: Device to use ('cuda', 'mps', 'cpu', or 'auto' for auto-detection)
+            dtype: Data type ('float32', 'float16', 'bfloat16', or 'auto' for device-optimal)
             use_flash_attention: Whether to use FlashAttention 2 (faster, less memory)
         """
-        self.device = device if torch.cuda.is_available() else "cpu"
+        # Auto-detect optimal device
+        self.device = get_optimal_device(device)
+
+        # Auto-detect optimal dtype if not specified
+        if dtype == "auto":
+            self.dtype = get_optimal_dtype(self.device)
+        else:
+            self.dtype = self._parse_dtype(dtype)
+            # Warn if dtype may not be optimal for device
+            if self.dtype == torch.bfloat16 and self.device == "mps":
+                print("⚠ bfloat16 not well-supported on MPS, using float32 instead")
+                self.dtype = torch.float32
+
         self.model_size = model_size
-        self.dtype = self._parse_dtype(dtype)
-        self.use_flash_attention = use_flash_attention
+        self.use_flash_attention = use_flash_attention and validate_flash_attention(self.device)
 
         # Verify model size is valid
         if model_size not in self.AVAILABLE_MODELS:
@@ -122,7 +135,14 @@ class Qwen3TTSEngine:
             print(f"Loading Qwen3-TTS ({self.model_size}) from Hugging Face...")
             print(f"Model: {self.model_name}")
 
+            # Device-specific warnings
+            if self.device == "mps":
+                print("⚠ Qwen3-TTS on MPS: Slower than CUDA, limited dtype support")
+            elif self.device == "cpu":
+                print("⚠ Qwen3-TTS on CPU: Very slow. GPU is recommended.")
+
             # Determine attention implementation
+            # FlashAttention 2 only works on CUDA
             attn_impl = "flash_attention_2" if self.use_flash_attention else None
 
             # Load model
@@ -135,6 +155,9 @@ class Qwen3TTSEngine:
             self.model.eval()
 
             print("✓ Qwen3-TTS model loaded successfully")
+            print(f"   Device: {self.device}, Dtype: {str(self.dtype).split('.')[-1]}")
+            if self.use_flash_attention:
+                print(f"   FlashAttention 2: ✅ Enabled")
 
         except Exception as e:
             print(f"✗ Failed to load Qwen3-TTS: {e}")
