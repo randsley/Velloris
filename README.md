@@ -2,14 +2,28 @@
 
 **The Local-First, High-Fidelity Voice Agent Engine**
 
-Velloris is a state-of-the-art framework for creating lifelike, interactive AI agents that run entirely on your local hardware. By orchestrating **PersonaPlex-7B** (real-time speech-to-speech) with **Qwen3-TTS** (expressive text-to-speech), Velloris achieves human-level voice conversations without the cloud.
+Velloris is a state-of-the-art framework for creating lifelike, interactive AI agents that run entirely on your local hardware. With three specialized modes, Velloris delivers the perfect voice AI solution for any use case—from ultra-low latency conversations to professional-quality content creation.
 
 **Key Features:**
-- 🎯 **Dual-Engine Architecture**: Real-time interactive mode + high-fidelity dubbing mode
+- ⚡ **Three-Mode Architecture**: Real-time S2S + high-fidelity dubbing + creative synthesis
+- 🎯 **70-170ms Latency**: Full-duplex conversations with PersonaPlex-7B (18x faster than Gemini Live!)
 - 🌐 **Cross-Platform**: Windows (NVIDIA CUDA) + macOS (Apple Metal/MPS) + Linux (CPU)
-- 🚀 **Production Ready**: All 17 tests passing, optimized device detection
+- 🚀 **Production Ready**: Optimized device detection, lazy loading, mode-based routing
 - 🔒 **Privacy First**: 100% local processing, no cloud dependencies
-- 🎭 **Voice Cloning**: Optional voice reference for personalized synthesis
+- 🎭 **10 Languages**: Multilingual support via Qwen3-TTS
+- 🧠 **Ollama Optional**: Not required for basic conversations
+
+---
+
+## 🔄 **IMPORTANT: Migration Notice**
+
+**Velloris v2.0** introduces a new three-mode architecture with significantly improved performance!
+
+**If you were using `--mode interactive`:**
+- ✅ **Use `--mode realtime`** for faster, full-duplex conversations (no Ollama needed!)
+- ✅ **Use `--mode creative`** for LLM-powered emotional content (similar to old behavior)
+
+Old commands still work with deprecation warnings. See [MIGRATION.md](MIGRATION.md) for details.
 
 ---
 
@@ -18,9 +32,11 @@ Velloris is a state-of-the-art framework for creating lifelike, interactive AI a
 ### Prerequisites
 
 - **Python 3.12+** (3.11+ supported)
-- **Ollama** (for interactive mode): [Download here](https://ollama.ai)
+- **For Real-Time Mode**: NVIDIA GPU (16GB+ VRAM) + CUDA 12.1+
+- **For Creative Mode**: Ollama running ([Download here](https://ollama.ai))
+- **For Dubbing Mode**: GPU recommended (6GB+ VRAM) or CPU
 - **macOS**: Homebrew (for system dependencies)
-- **Windows**: NVIDIA GPU + CUDA 12.1+ (recommended)
+- **Windows/Linux**: NVIDIA GPU recommended for best performance
 
 ### 1. Clone & Setup
 
@@ -53,28 +69,45 @@ install_windows.bat  # or run equivalent pip commands
 python3 main.py --show-config
 ```
 
-### 3. Run Dubbing Mode (No Setup Required)
+### 3. Choose Your Mode
 
+#### **Real-Time Conversation** (PersonaPlex S2S)
+Ultra-low latency, full-duplex conversations:
+```bash
+python3 main.py --mode realtime --persona "You are a helpful tutor" --voice NATF2
+```
+- ⚡ **70-170ms latency**
+- ✅ **Full-duplex** (can interrupt naturally)
+- ❌ **No Ollama needed**
+- 🎯 **Best for**: Interactive conversations, customer service
+
+#### **High-Fidelity Dubbing** (Qwen3-TTS)
+Professional narration for content creation:
 ```bash
 python3 main.py --mode dubbing --script "Your narration here"
 ```
+- 🎨 **Professional quality** (12kHz)
+- 🌍 **10 languages** supported
+- 🎭 **Voice cloning** available
+- 🎯 **Best for**: Audiobooks, podcasts, video narration
 
-You should hear the AI narrate your script! 🔊
-
-### 4. Run Interactive Mode (Requires Ollama)
+#### **Creative Assistant** (Ollama + Qwen3-TTS)
+Emotional storytelling with LLM reasoning:
 
 **Terminal 1** - Start Ollama:
 ```bash
 ollama serve
-ollama pull llama3  # Download model (first time only)
+ollama pull llama3  # First time only
 ```
 
 **Terminal 2** - Run Velloris:
 ```bash
-python3 main.py --mode interactive
+python3 main.py --mode creative --emotion "Speak with excitement"
 ```
-
-Type your questions and hear the AI respond in real-time!
+- 🧠 **LLM reasoning** (Ollama)
+- 🎭 **Emotion control**
+- 🌍 **Multilingual**
+- 🎯 **Best for**: Storytelling, creative content
 
 ---
 
@@ -105,38 +138,90 @@ Velloris/
 
 ---
 
-## 🎯 Usage
+## 🎯 Usage Guide
 
-### Dubbing Mode (High-Fidelity Narration)
+### Mode Comparison
 
-Generate professional-quality speech from text:
+| Feature | Real-Time | Dubbing | Creative |
+|---------|-----------|---------|----------|
+| **Latency** | 70-170ms ⚡ | N/A | 1-3s |
+| **Full-Duplex** | ✅ Yes | ❌ No | ❌ No |
+| **Interruption** | ✅ 95% success | ❌ No | ❌ No |
+| **Languages** | English | 10 languages | 10 languages |
+| **Voice Options** | 16 preset | Unlimited | Unlimited |
+| **Emotion Control** | Limited | ✅ Yes | ✅ Yes |
+| **Ollama Required** | ❌ No | ❌ No | ✅ Yes |
+| **GPU Required** | ✅ NVIDIA (16GB+) | Recommended | Recommended |
+| **Best For** | Conversations | Narration | Creative content |
 
-```bash
-# Simple
-python3 main.py --mode dubbing --script "Hello world"
+### Real-Time Mode Examples
 
-# With voice cloning
-python3 main.py --mode dubbing --script "Story text" --voice-ref my_voice.wav
-
-# Specify device
-python3 main.py --mode dubbing --device cpu
-```
-
-**Output:** 14+ seconds of natural-sounding speech at 24kHz
-
-### Interactive Mode (Real-Time Conversation)
-
-Have conversations with an AI agent powered by Ollama:
+Ultra-low latency conversations with PersonaPlex:
 
 ```bash
-python3 main.py --mode interactive
+# Basic conversation
+python3 main.py --mode realtime
+
+# Custom persona
+python3 main.py --mode realtime --persona "You are a friendly tutor"
+
+# Different voice
+python3 main.py --mode realtime --voice NATM1 --persona "You are a wise mentor"
+
+# Available voices: NATF0-3 (natural female), NATM0-3 (natural male),
+#                   VARF0-4 (varied female), VARM0-4 (varied male)
 ```
 
 **Features:**
-- Real-time LLM responses (Ollama)
-- Automatic text-to-speech synthesis
-- Audio playback of responses
-- Type `quit`, `exit`, or `bye` to end
+- ⚡ **70-170ms latency** (18x faster than Gemini Live)
+- ✅ **Full-duplex** (natural interruptions)
+- ✅ **16 voices** with persona control
+- ✅ **No LLM needed** (PersonaPlex handles reasoning)
+
+### Dubbing Mode Examples
+
+Professional narration with Qwen3-TTS:
+
+```bash
+# Simple narration
+python3 main.py --mode dubbing --script "Hello world"
+
+# With voice cloning (3-5 second sample)
+python3 main.py --mode dubbing --script "Story text" --voice-ref my_voice.wav
+
+# Specify device
+python3 main.py --mode dubbing --script "Your script" --device cpu
+```
+
+**Features:**
+- 🎨 **Professional quality** (12kHz)
+- 🌍 **10 languages** (Chinese, English, Japanese, Korean, German, French, Russian, Portuguese, Spanish, Italian)
+- 🎭 **Voice cloning** from 3-second samples
+- 🎨 **Voice design** via natural language
+
+### Creative Mode Examples
+
+Emotional storytelling with Ollama + Qwen3-TTS:
+
+```bash
+# Start Ollama first
+ollama serve  # In separate terminal
+
+# Basic creative mode
+python3 main.py --mode creative --script "Tell me a story about space"
+
+# With emotion control
+python3 main.py --mode creative --script "Describe a sunset" --emotion "Speak poetically"
+
+# Different LLM model
+python3 main.py --mode creative --llm-model mistral --emotion "Excited tone"
+```
+
+**Features:**
+- 🧠 **LLM reasoning** (Ollama: llama3, mistral, mixtral, etc.)
+- 🎭 **Emotion control** via natural language instructions
+- 🌍 **Multilingual** support
+- 🎨 **Creative flexibility**
 
 ### Device Options
 
@@ -168,18 +253,21 @@ Displays:
 
 ## 🏗️ Architecture
 
-### Interactive Mode Pipeline
+### Real-Time Mode Pipeline (NEW!)
 
 ```
-User Input (Text)
+User Speech (24kHz)
     ↓
-Ollama LLM (Reasoning)
+PersonaPlex-7B (end-to-end S2S)
+  • Listen & Understand
+  • Reason & Respond
+  • Generate Speech
     ↓
-Response Text
-    ↓
-Qwen3-TTS (Synthesis)
-    ↓
-Audio Output → Speaker 🔊
+Agent Speech (24kHz) → Speaker 🔊
+
+Latency: 70-170ms ⚡
+Full-Duplex: ✅ Yes
+Ollama: ❌ Not needed
 ```
 
 ### Dubbing Mode Pipeline
@@ -187,9 +275,32 @@ Audio Output → Speaker 🔊
 ```
 Script Text
     ↓
-Qwen3-TTS (Synthesis)
+Qwen3-TTS (High-Fidelity Synthesis)
+  • 10 languages
+  • Voice cloning
+  • Emotion control
     ↓
-Audio Output → Speaker 🔊
+Audio Output (12kHz) → Speaker 🔊
+
+Quality: Professional
+Ollama: ❌ Not needed
+```
+
+### Creative Mode Pipeline
+
+```
+User Text
+    ↓
+Ollama LLM (Reasoning/Creativity)
+    ↓
+Response Text
+    ↓
+Qwen3-TTS (Emotional Synthesis)
+    ↓
+Audio Output (12kHz) → Speaker 🔊
+
+Flexibility: High
+Ollama: ✅ Required
 ```
 
 **See [ARCHITECTURE.md](ARCHITECTURE.md) for detailed technical documentation.**

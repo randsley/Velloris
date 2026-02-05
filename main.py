@@ -45,18 +45,38 @@ class VellorisApplication:
         self.args = args
         self.running = True
 
-        # Initialize components
-        self.interruption_handler = InterruptionHandler(threshold=Config.vad.THRESHOLD)
-        self.audio_controller = IntegratedAudioController(
-            handler=self.interruption_handler, whisper_model=Config.model.WHISPER_MODEL
-        )
+        # Handle deprecated 'interactive' mode
+        if args.mode == "interactive":
+            print("⚠️  WARNING: 'interactive' mode is deprecated!")
+            print("   Use '--mode realtime' for PersonaPlex S2S (faster, full-duplex)")
+            print("   Or '--mode creative' for Ollama + Qwen3-TTS (flexible, emotional)")
+            print("   Defaulting to 'creative' mode...\n")
+            args.mode = "creative"
+
+        # Initialize components based on mode
         self.orchestrator = LocalVoiceOrchestrator(
             device=args.device, llm_model=args.llm_model
         )
-        self.brain = VoiceAgentBrain(
-            model_name=args.llm_model,
-            orchestrator=self.orchestrator,
-        )
+
+        # Brain only needed for creative mode
+        if args.mode == "creative":
+            self.brain = VoiceAgentBrain(
+                mode=args.mode,
+                model_name=args.llm_model,
+                orchestrator=self.orchestrator,
+            )
+        else:
+            self.brain = None  # Not needed for realtime or dubbing
+
+        # Audio controller only for realtime mode (in future)
+        if args.mode == "realtime":
+            self.interruption_handler = InterruptionHandler(threshold=Config.vad.THRESHOLD)
+            self.audio_controller = IntegratedAudioController(
+                handler=self.interruption_handler, whisper_model=Config.model.WHISPER_MODEL
+            )
+        else:
+            self.interruption_handler = None
+            self.audio_controller = None
 
         # Setup signal handlers
         signal.signal(signal.SIGINT, self._signal_handler)
@@ -252,9 +272,14 @@ For full documentation, see README.md
     parser.add_argument(
         "--mode",
         type=str,
-        default="interactive",
-        choices=["interactive", "dubbing"],
-        help="Operating mode: 'interactive' for real-time, 'dubbing' for content generation",
+        default=Config.app.DEFAULT_MODE,
+        choices=Config.app.MODES + ["interactive"],  # Include 'interactive' for backward compatibility
+        help="""Operating mode:
+        - realtime: PersonaPlex end-to-end S2S (ultra-low latency, full-duplex)
+        - dubbing: Qwen3-TTS high-fidelity narration (multilingual, professional quality)
+        - creative: Ollama + Qwen3-TTS (emotional synthesis, storytelling)
+        - interactive: DEPRECATED (use 'realtime' or 'creative')
+        """,
     )
 
     # Device arguments
@@ -271,7 +296,7 @@ For full documentation, see README.md
         "--llm-model",
         type=str,
         default=Config.model.OLLAMA_MODEL,
-        help="Ollama model name (requires Ollama running)",
+        help="Ollama model name (only used in creative mode, requires 'ollama serve')",
     )
 
     parser.add_argument(
@@ -279,20 +304,47 @@ For full documentation, see README.md
         type=str,
         default=Config.model.WHISPER_MODEL,
         choices=["tiny", "base", "small", "medium", "large"],
-        help="Whisper STT model size",
+        help="Whisper STT model size (deprecated, not used in new architecture)",
+    )
+
+    # Real-time mode arguments (PersonaPlex)
+    parser.add_argument(
+        "--persona",
+        type=str,
+        default=Config.app.REALTIME_PERSONA,
+        help="Persona/role description for PersonaPlex (realtime mode)",
+    )
+
+    parser.add_argument(
+        "--voice",
+        type=str,
+        default=Config.app.REALTIME_VOICE,
+        choices=["NATF0", "NATF1", "NATF2", "NATF3",
+                 "NATM0", "NATM1", "NATM2", "NATM3",
+                 "VARF0", "VARF1", "VARF2", "VARF3", "VARF4",
+                 "VARM0", "VARM1", "VARM2", "VARM3", "VARM4"],
+        help="Voice selection for PersonaPlex (realtime mode): NATF=natural female, NATM=natural male, VARF=varied female, VARM=varied male",
     )
 
     # Dubbing mode arguments
     parser.add_argument(
         "--script",
         type=str,
-        help="Script/text to narrate in dubbing mode",
+        help="Script/text to narrate (dubbing mode) or process (creative mode)",
     )
 
     parser.add_argument(
         "--voice-ref",
         type=str,
-        help="Path to voice reference audio for cloning (3-5 seconds)",
+        help="Path to voice reference audio for voice cloning (3-5 seconds, dubbing/creative modes)",
+    )
+
+    # Creative mode arguments
+    parser.add_argument(
+        "--emotion",
+        type=str,
+        default=Config.app.CREATIVE_DEFAULT_EMOTION,
+        help="Emotion instruction for Qwen3-TTS (creative mode), e.g., 'Speak with excitement'",
     )
 
     # Configuration arguments

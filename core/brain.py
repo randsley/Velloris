@@ -1,46 +1,70 @@
 """
-Voice Agent Brain
+Voice Agent Brain - Mode-Based Architecture
 
-Processes voice turns and coordinates between transcription, LLM reasoning, and speech synthesis.
+Processes voice turns based on operating mode:
+- realtime: PersonaPlex end-to-end S2S (no brain needed - PersonaPlex has built-in reasoning)
+- creative: Ollama LLM + Qwen3-TTS (brain coordinates LLM + TTS)
+- dubbing: Direct Qwen3-TTS (no brain needed - just synthesis)
 
-The brain integrates with:
-- Orchestrator for engine routing
-- LLM (Ollama) for reasoning
-- Optional TTS engine for speech generation
+The brain is primarily used for creative mode.
 """
 
 import asyncio
 import numpy as np
 from typing import Optional, AsyncIterator, Tuple
-from langchain_community.llms import Ollama
 
 
 class VoiceAgentBrain:
     """
     Core brain for voice agent reasoning and response generation.
 
-    Coordinates:
-    - Audio transcription (via orchestrator)
-    - LLM reasoning (via Ollama)
-    - Speech synthesis (via TTS engine)
+    Mode-based operation:
+    - realtime: NOT USED (PersonaPlex handles everything)
+    - creative: USED (coordinates Ollama + Qwen3-TTS)
+    - dubbing: NOT USED (direct Qwen3-TTS)
     """
 
-    def __init__(self, model_name: str = "llama3", tts_engine=None, orchestrator=None):
+    def __init__(
+        self,
+        mode: str = "creative",
+        model_name: str = "llama3",
+        tts_engine=None,
+        orchestrator=None
+    ):
         """
         Initialize the brain.
 
         Args:
-            model_name: Ollama model name
+            mode: Operating mode ('realtime', 'creative', 'dubbing')
+            model_name: Ollama model name (only used in creative mode)
             tts_engine: Optional TTS engine for speech generation
-            orchestrator: Optional orchestrator for complex routing
+            orchestrator: Orchestrator for routing (required for all modes)
         """
-        self.llm = Ollama(model=model_name)
-        self.tts_engine = tts_engine  # Optional TTS engine (Qwen3 or Coqui)
-        self.orchestrator = orchestrator  # Optional orchestrator for routing
+        self.mode = mode
+        self.model_name = model_name
+        self.tts_engine = tts_engine
+        self.orchestrator = orchestrator
+
+        # Ollama only needed for creative mode
+        self.llm = None
+        if mode == "creative":
+            try:
+                from langchain_community.llms import Ollama
+                self.llm = Ollama(model=model_name)
+                print(f"ℹ️  Brain initialized for creative mode with {model_name}")
+            except Exception as e:
+                print(f"⚠️  Failed to initialize Ollama: {e}")
+                print(f"   Make sure Ollama is running: ollama serve")
+        elif mode == "realtime":
+            print(f"ℹ️  Brain initialized for realtime mode (PersonaPlex handles reasoning)")
+        else:
+            print(f"ℹ️  Brain initialized for {mode} mode")
 
     async def process_voice_turn(self, user_text: str) -> Tuple[str, Optional[np.ndarray]]:
         """
         Takes user text, generates LLM response, and optionally synthesizes audio.
+
+        Only used in creative mode. For realtime mode, use PersonaPlex directly.
 
         Args:
             user_text: Transcribed user input
@@ -48,7 +72,20 @@ class VoiceAgentBrain:
         Returns:
             Tuple of (response_text, audio_response) where audio_response may be None
         """
-        print(f"Agent Thinking...")
+        if self.mode == "realtime":
+            print("⚠️  WARNING: Brain.process_voice_turn() not needed in realtime mode!")
+            print("   Use PersonaPlex.generate_s2s_response() directly for realtime S2S.")
+            return user_text, None
+
+        if self.mode != "creative":
+            print(f"⚠️  WARNING: Brain only used in creative mode, not '{self.mode}'")
+            return user_text, None
+
+        if self.llm is None:
+            print("❌ LLM not available. Is Ollama running?")
+            return "Error: LLM not available", None
+
+        print(f"🧠 Agent Thinking...")
 
         # Step 1: Generate LLM response
         try:
@@ -67,10 +104,10 @@ class VoiceAgentBrain:
                         pass
 
         except Exception as e:
-            print(f"LLM error: {e}")
+            print(f"❌ LLM error: {e}")
             full_response = "I encountered an error processing your request."
 
-        print(f"Response: {full_response}")
+        print(f"💬 Response: {full_response[:100]}{'...' if len(full_response) > 100 else ''}")
 
         # Step 2: Finalize TTS if streaming
         if self.tts_engine is not None:
@@ -91,11 +128,11 @@ class VoiceAgentBrain:
         elif self.orchestrator is not None:
             # Use orchestrator's Qwen3-TTS for dubbing
             try:
-                result = self.orchestrator.route_request(full_response, mode="dubbing")
+                result = self.orchestrator.route_request(text=full_response, mode="dubbing")
                 if result:
                     audio_response = result[0]  # Extract audio array from (audio, sr)
             except Exception as e:
-                print(f"TTS error: {e}")
+                print(f"❌ TTS error: {e}")
 
         return full_response, audio_response
 
@@ -103,25 +140,35 @@ class VoiceAgentBrain:
         """
         Stream LLM tokens one-by-one for progressive generation.
 
+        Only used in creative mode with Ollama.
+
         Args:
             user_text: User input
 
         Yields:
             Individual tokens from the LLM
         """
+        if self.llm is None:
+            print("❌ LLM not available for streaming")
+            yield ""
+            return
+
         try:
             # LangChain's astream returns individual tokens
             async for token in self.llm.astream(user_text):
                 yield token
         except Exception as e:
-            print(f"Streaming error: {e}")
+            print(f"❌ Streaming error: {e}")
             yield ""
 
     async def process_audio_turn(
         self, audio: np.ndarray, sr: int = 16000, ref_audio_path: Optional[str] = None
     ) -> Tuple[str, Optional[np.ndarray]]:
         """
-        Process a complete audio turn: transcribe, reason, synthesize.
+        DEPRECATED: Use orchestrator.route_request() instead.
+
+        For realtime mode: Use PersonaPlex end-to-end S2S directly
+        For creative mode: This method can still be used, but orchestrator is preferred
 
         Args:
             audio: Audio samples
@@ -131,18 +178,40 @@ class VoiceAgentBrain:
         Returns:
             Tuple of (response_text, audio_response)
         """
+        import warnings
+        warnings.warn(
+            "VoiceAgentBrain.process_audio_turn() is deprecated. "
+            "Use orchestrator.route_request() with mode='realtime' or 'creative' instead.",
+            DeprecationWarning,
+            stacklevel=2
+        )
+
         if self.orchestrator is None:
-            print("No orchestrator available for audio processing")
+            print("❌ No orchestrator available for audio processing")
             return "", None
 
-        # Step 1: Transcribe audio using PersonaPlex
+        if self.mode == "realtime":
+            print("⚠️  For realtime mode, use orchestrator.route_request(mode='realtime', audio_input=...)")
+            print("   This bypasses unnecessary transcription and uses PersonaPlex S2S directly.")
+            # Use orchestrator's realtime mode
+            result = self.orchestrator.route_request(
+                mode="realtime",
+                audio_input=audio
+            )
+            if result:
+                audio_out, sr_out = result
+                return "[PersonaPlex S2S Response]", audio_out
+            return "", None
+
+        # For creative mode, we need transcription first
+        print("⚠️  Using deprecated transcription path. Consider using Whisper for STT.")
         user_text = self.orchestrator.personaplex_engine.transcribe_audio(audio, sr)
         print(f"Transcribed: {user_text}")
 
         if not user_text:
             return "", None
 
-        # Step 2: Process the transcribed text
+        # Process the transcribed text
         response_text, audio_response = await self.process_voice_turn(user_text)
 
         return response_text, audio_response

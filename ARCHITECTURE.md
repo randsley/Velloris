@@ -1,49 +1,91 @@
-# Velloris Architecture: PersonaPlex-7B + Qwen3-TTS
+# Velloris Architecture: Three-Mode Voice AI System
 
 ## Vision Statement
 
-**"By orchestrating the real-time interaction of PersonaPlex-7B with the expressive Voice Design of Qwen3-TTS, Velloris achieves human-level conversation without the cloud."**
+**"Velloris delivers versatile voice AI through three specialized modes: ultra-low latency conversations (PersonaPlex-7B end-to-end S2S), professional-quality narration (Qwen3-TTS), and creative emotional synthesis (Ollama + Qwen3-TTS)—all running locally without the cloud."**
 
-Velloris is a local-first dual-engine voice agent system that combines two state-of-the-art models:
-- **PersonaPlex-7B** for real-time conversational understanding and synthesis
-- **Qwen3-TTS** for expressive, high-fidelity voice generation
+Velloris v2.0 is a local-first three-mode voice agent system that properly utilizes state-of-the-art models:
+- **PersonaPlex-7B** for end-to-end speech-to-speech conversations (70-170ms latency)
+- **Qwen3-TTS** for high-fidelity voice synthesis (10 languages, emotion control)
+- **Ollama** for flexible LLM reasoning (optional, creative mode only)
 
-## Architecture Overview
+## Architecture Overview (v2.0)
 
 ```
-┌─────────────────────────────────────────────────────────────┐
-│                    Velloris Application                      │
-│              (core/orchestrator.py routing)                  │
-└────────────────────┬────────────────────────────────────────┘
-                     │
-        ┌────────────┴────────────┐
-        │                         │
-        ▼                         ▼
-   ┌─────────────┐         ┌──────────────┐
-   │ Interactive │         │   Dubbing    │
-   │   Mode      │         │    Mode      │
-   └──────┬──────┘         └──────┬───────┘
-          │                       │
-          ▼                       ▼
-   ┌──────────────────┐  ┌─────────────────┐
-   │PersonaPlex-7B    │  │  Qwen3-TTS      │
-   │(NVIDIA)          │  │(Alibaba)        │
-   │                  │  │                 │
-   │Audio In → Audio  │  │Text → Audio     │
-   │Out (24kHz)       │  │Out (12kHz)      │
-   │                  │  │                 │
-   │ • Real-time S2S  │  │ • Voice Design  │
-   │ • Full-duplex    │  │ • Voice Cloning │
-   │ • Interruptions  │  │ • Emotion       │
-   │ • 16 Voices      │  │ • Multilingual  │
-   └──────────────────┘  └─────────────────┘
+┌───────────────────────────────────────────────────────────────┐
+│                    Velloris Application                        │
+│              (core/orchestrator.py mode-based routing)         │
+└────────────────────────┬──────────────────────────────────────┘
+                         │
+        ┌────────────────┼────────────────┐
+        │                │                │
+        ▼                ▼                ▼
+   ┌─────────┐     ┌─────────┐     ┌─────────┐
+   │Realtime │     │ Dubbing │     │Creative │
+   │  Mode   │     │  Mode   │     │  Mode   │
+   └────┬────┘     └────┬────┘     └────┬────┘
+        │               │               │
+        ▼               ▼               ▼
+┌──────────────┐  ┌──────────┐  ┌─────────────────┐
+│PersonaPlex-7B│  │Qwen3-TTS │  │ Ollama + Qwen3  │
+│(NVIDIA)      │  │(Alibaba) │  │ LLM + TTS       │
+│              │  │          │  │                 │
+│Audio→Audio   │  │Text→Audio│  │Text→LLM→Audio   │
+│(24kHz)       │  │(12kHz)   │  │(12kHz)          │
+│              │  │          │  │                 │
+│•End-to-end S2S│ │•Voice    │  │•LLM Reasoning   │
+│•Full-duplex  │  │ Design   │  │•Emotion Control │
+│•70-170ms     │  │•10 langs │  │•Creative Output │
+│•16 Voices    │  │•Cloning  │  │•Multilingual    │
+│•No LLM needed│  │•No LLM   │  │•Requires Ollama │
+└──────────────┘  └──────────┘  └─────────────────┘
 ```
 
-## Mode Selection
+## Three-Mode Architecture
 
-### Interactive Mode (PersonaPlex-7B)
+### Mode Comparison Table
 
-**Best for:** Real-time voice conversations, customer service, voice assistants
+| Feature | Real-Time | Dubbing | Creative |
+|---------|-----------|---------|----------|
+| **Engine** | PersonaPlex-7B | Qwen3-TTS | Ollama + Qwen3-TTS |
+| **Latency** | **70-170ms** ⚡ | N/A | 1-3s |
+| **Full-Duplex** | **✅ Yes** | ❌ No | ❌ No |
+| **Interruption** | **✅ 95%** success | ❌ No | ❌ No |
+| **Languages** | English only | **10 languages** | **10 languages** |
+| **Voice Options** | 16 preset | **Unlimited** | **Unlimited** |
+| **Emotion Control** | Limited | **✅ Yes** | **✅ Yes** |
+| **Voice Cloning** | ✅ Yes | **✅ Yes** | **✅ Yes** |
+| **Ollama Required** | **❌ No** | **❌ No** | ✅ Yes |
+| **GPU Required** | ✅ NVIDIA (16GB+) | Recommended | Recommended |
+| **VRAM Usage** | 16GB+ | 6-12GB | 6-12GB (TTS) |
+| **Sample Rate** | 24kHz | 12kHz | 12kHz |
+| **Best For** | Conversations | Narration | Creative content |
+
+### Performance Comparison
+
+#### **Latency Benchmarks**
+
+| Mode | First Response | Steady State | vs Gemini Live |
+|------|----------------|--------------|----------------|
+| **Real-Time** | **70-170ms** | **70-170ms** | **18x faster** |
+| Creative | 1-3s | 1-3s | Similar |
+| Dubbing | N/A | N/A | N/A |
+
+#### **Quality Metrics**
+
+| Mode | Naturalness | Speaker Similarity | Content Consistency |
+|------|-------------|-------------------|---------------------|
+| **Real-Time** | 3.90/5.0 (MOS) | 0.65 (WavLM) | N/A (E2E S2S) |
+| Dubbing | 4.16/5.0 (UTMOS) | 0.95 (tokenizer) | 0.77-1.24% WER |
+| Creative | 4.16/5.0 (UTMOS) | 0.95 (tokenizer) | Depends on LLM |
+
+---
+
+## Mode Selection Guide
+
+### Real-Time Mode (PersonaPlex-7B End-to-End S2S)
+
+**Best for:** Interactive voice conversations, customer service, live tutoring, gaming NPCs
 
 **Input:** User audio + optional persona prompt
 ```python

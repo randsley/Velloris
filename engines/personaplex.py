@@ -144,26 +144,36 @@ class PersonaPlexEngine:
 
     def transcribe_audio(self, audio: np.ndarray, sr: int = 24000) -> str:
         """
-        Extract text transcription from PersonaPlex-7B speech recognition.
+        DEPRECATED: Do not use PersonaPlex for transcription only!
 
-        PersonaPlex-7B processes speech and can extract text, but its primary
-        output is speech. For text-only transcription, use Whisper instead.
+        PersonaPlex-7B is a full end-to-end Speech-to-Speech model.
+        Using it for transcription only wastes 95% of its capabilities.
+
+        For transcription-only tasks, use Whisper or another dedicated STT model.
+        For conversations, use process_voice_turn() or generate_s2s_response() instead.
 
         Args:
             audio: Audio samples as numpy array (24kHz for PersonaPlex)
             sr: Sample rate
 
         Returns:
-            Transcribed text (empty in stub mode)
+            Empty string (deprecated functionality)
         """
+        import warnings
+        warnings.warn(
+            "PersonaPlex.transcribe_audio() is deprecated. "
+            "PersonaPlex is designed for end-to-end S2S conversations. "
+            "Use process_voice_turn() for full S2S or Whisper for transcription-only.",
+            DeprecationWarning,
+            stacklevel=2
+        )
+
         if self.model is None:
             print("[STUB MODE] PersonaPlex-7B not loaded")
             return ""
 
-        # PersonaPlex-7B is designed for speech-to-speech, not pure transcription
-        # For transcription, use Whisper separately
-        print("[INFO] PersonaPlex-7B is optimized for speech-to-speech.")
-        print("       For text transcription, use Whisper or another STT model.")
+        print("⚠️  WARNING: Using PersonaPlex for transcription only is inefficient!")
+        print("   PersonaPlex is a full S2S model. Use process_voice_turn() instead.")
         return ""
 
     def process_speech(
@@ -287,19 +297,24 @@ class PersonaPlexEngine:
 
     def process_voice_turn(
         self, audio: np.ndarray, sr: int = 24000
-    ) -> Tuple[str, Optional[np.ndarray]]:
+    ) -> Tuple[str, Optional[Tuple[np.ndarray, int]]]:
         """
-        Process a complete voice turn with PersonaPlex-7B.
+        PRIMARY METHOD: Process complete voice turn with PersonaPlex-7B end-to-end S2S.
 
-        PersonaPlex-7B handles the complete speech-to-speech pipeline:
+        This is the CORRECT way to use PersonaPlex. It handles the complete pipeline:
         User Audio → Speech Understanding → Reasoning → Speech Generation
+
+        No separate LLM or TTS needed! PersonaPlex does everything.
 
         Args:
             audio: User audio samples
             sr: Sample rate (PersonaPlex expects 24kHz)
 
         Returns:
-            Tuple of (agent_text, agent_audio)
+            Tuple of (agent_text, (agent_audio, sample_rate))
+            - agent_text: Placeholder text representation
+            - agent_audio: Generated agent speech response
+            - sample_rate: Audio sample rate (24kHz)
         """
         if self.model is None:
             print("[STUB MODE] PersonaPlex-7B not available")
@@ -323,6 +338,81 @@ class PersonaPlexEngine:
         except Exception as e:
             print(f"Voice turn processing error: {e}")
             return "", None
+
+    def generate_s2s_response(
+        self,
+        audio: np.ndarray,
+        sr: int = 24000,
+        voice_prompt: Optional[str] = None,
+        text_prompt: Optional[str] = None,
+        streaming: bool = False
+    ) -> Optional[Tuple[np.ndarray, int]]:
+        """
+        PRIMARY METHOD: Generate end-to-end speech-to-speech response.
+
+        This method uses PersonaPlex-7B as intended: full S2S processing.
+        No separate LLM or TTS needed.
+
+        Args:
+            audio: User audio input (24kHz preferred)
+            sr: Input sample rate
+            voice_prompt: Voice embedding file (e.g., "NATF2.pt")
+            text_prompt: Persona/role description
+            streaming: Enable streaming output (for full-duplex)
+
+        Returns:
+            Tuple of (agent_audio, sample_rate) or None
+
+        Example:
+            >>> engine = PersonaPlexEngine(voice="natural_female_2",
+            ...                            persona="You are a helpful tutor")
+            >>> user_audio = record_audio()  # 24kHz audio
+            >>> agent_audio, sr = engine.generate_s2s_response(user_audio)
+            >>> play_audio(agent_audio, sr)
+        """
+        if self.model is None:
+            print("[STUB MODE] PersonaPlex-7B not loaded")
+            return None
+
+        try:
+            # Resample to 24kHz if needed
+            if sr != 24000:
+                from utils.audio_utils import resample_audio
+                audio = resample_audio(audio, sr, 24000)
+
+            # Use instance voice/persona if not overridden
+            voice_file = voice_prompt or self.AVAILABLE_VOICES.get(self.voice, "NATF2.pt")
+            persona_text = text_prompt or self.persona or "You are a helpful assistant."
+
+            print(f"🎙️  Processing {len(audio)/24000:.2f}s with PersonaPlex-7B (end-to-end S2S)")
+            print(f"   Voice: {voice_file}")
+            print(f"   Persona: {persona_text[:60]}...")
+
+            # TODO: Actual PersonaPlex inference goes here
+            # This requires the moshi library and proper model loading
+            # For now, return stub response
+            with torch.no_grad():
+                # In real implementation:
+                # agent_audio = self.model.generate(
+                #     audio=audio,
+                #     voice_prompt=voice_file,
+                #     text_prompt=persona_text,
+                #     streaming=streaming
+                # )
+
+                # Stub: Return 2 seconds of silence
+                agent_audio = np.zeros(int(24000 * 2), dtype=np.float32)
+
+            duration = len(agent_audio) / 24000
+            print(f"✓ Generated {duration:.2f}s of agent speech")
+
+            return agent_audio, 24000
+
+        except Exception as e:
+            print(f"✗ S2S generation error: {e}")
+            import traceback
+            traceback.print_exc()
+            return None
 
     def unload(self):
         """Unload models to free memory."""
