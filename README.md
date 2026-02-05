@@ -242,7 +242,7 @@ pytest tests/test_pipeline.py --cov=. -v
 
 - **[ARCHITECTURE.md](ARCHITECTURE.md)** - Full system architecture, platform support, performance metrics
 - **[CLAUDE.md](CLAUDE.md)** - Development guidelines for contributors
-- **[LICENSE](LICENSE)** - MIT License
+- **[LICENSE](LICENSE)** - Apache License 2.0
 
 ---
 
