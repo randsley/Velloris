@@ -79,11 +79,19 @@ class VoiceAgentBrain:
             except Exception:
                 pass
 
-        # Step 3: Generate audio if TTS engine available
+        # Step 3: Generate audio if TTS or orchestrator available
         audio_response = None
         if self.tts_engine is not None:
             try:
                 result = self.tts_engine.generate_dubbing(full_response)
+                if result:
+                    audio_response = result[0]  # Extract audio array from (audio, sr)
+            except Exception as e:
+                pass
+        elif self.orchestrator is not None:
+            # Use orchestrator's Qwen3-TTS for dubbing
+            try:
+                result = self.orchestrator.route_request(full_response, mode="dubbing")
                 if result:
                     audio_response = result[0]  # Extract audio array from (audio, sr)
             except Exception as e:
