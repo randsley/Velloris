@@ -171,7 +171,7 @@ class Qwen3TTSEngine:
         self,
         text: str,
         ref_audio_path: Optional[str] = None,
-        language: str = "English",
+        language: str = "english",
         speaker: Optional[str] = None,
         instruct: str = "",
     ) -> Optional[Tuple[np.ndarray, int]]:
@@ -181,7 +181,9 @@ class Qwen3TTSEngine:
         Args:
             text: Text to synthesize
             ref_audio_path: Path to reference audio for voice cloning
-            language: Language (English, Mandarin, etc.)
+            language: Language code (lowercase). Supported: 'auto', 'chinese', 'english',
+                     'french', 'german', 'italian', 'japanese', 'korean', 'portuguese',
+                     'russian', 'spanish'
             speaker: Speaker name (for CustomVoice models like "Ryan", "Lisa", etc.)
             instruct: Instruction for tone/emotion/style
 
@@ -191,6 +193,23 @@ class Qwen3TTSEngine:
         if self.model is None:
             print("[STUB MODE] Qwen3-TTS not loaded. Run: pip install qwen-tts")
             return None
+
+        # Normalize language to lowercase
+        language = language.lower()
+        # Map common language codes to full names
+        language_map = {
+            "en": "english",
+            "zh": "chinese",
+            "fr": "french",
+            "de": "german",
+            "it": "italian",
+            "ja": "japanese",
+            "ko": "korean",
+            "pt": "portuguese",
+            "ru": "russian",
+            "es": "spanish",
+        }
+        language = language_map.get(language, language)
 
         try:
             print(f"Generating speech: {text[:50]}...")
