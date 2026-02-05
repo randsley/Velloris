@@ -152,7 +152,6 @@ class Qwen3TTSEngine:
                 dtype=self.dtype,
                 attn_implementation=attn_impl if self.device == "cuda" else None,
             )
-            self.model.eval()
 
             print("✓ Qwen3-TTS model loaded successfully")
             print(f"   Device: {self.device}, Dtype: {str(self.dtype).split('.')[-1]}")
