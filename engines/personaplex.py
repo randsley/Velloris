@@ -32,11 +32,11 @@ from typing import Optional, Tuple, AsyncIterator
 from utils.device_utils import get_optimal_device, get_optimal_dtype
 
 try:
-    from moshi.model import MoshiModel
+    from moshi.models.loaders import get_moshi_lm
     HAS_PERSONAPLEX = True
 except ImportError:
     HAS_PERSONAPLEX = False
-    print("WARNING: PersonaPlex-7B not installed. Install with: git clone https://github.com/NVIDIA/personaplex && pip install personaplex/moshi/.")
+    print("WARNING: PersonaPlex-7B not installed. Install with: pip install moshi-personaplex")
 
 
 class PersonaPlexEngine:
@@ -123,15 +123,11 @@ class PersonaPlexEngine:
             # Get optimal dtype for device
             optimal_dtype = get_optimal_dtype(self.device)
 
-            # Import here to avoid circular dependency
-            from moshi.model import MoshiModel
+            # Load model using moshi-personaplex package
+            from moshi.models.loaders import get_moshi_lm
 
-            self.model = MoshiModel.from_pretrained(
-                "nvidia/personaplex-7b-v1",
-                device=self.device,
-                dtype=optimal_dtype,
-            )
-            self.model.eval()
+            # Load the Moshi LM model
+            self.model = get_moshi_lm(device=self.device)
 
             print("✓ PersonaPlex-7B model loaded successfully")
             print(f"   Device: {self.device}, Dtype: {str(optimal_dtype).split('.')[-1]}")
