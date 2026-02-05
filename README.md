@@ -99,6 +99,7 @@ Velloris/
 ├── main.py                 # CLI Application
 ├── requirements.txt        # Python Dependencies
 ├── ARCHITECTURE.md         # Detailed architecture guide
+├── LICENSE                 # Apache License 2.0
 └── README.md               # This file
 ```
 
@@ -281,7 +282,7 @@ pytest tests/test_pipeline.py --cov=. -v
 
 ## 📄 License
 
-MIT License - See [LICENSE](LICENSE) file
+Apache License 2.0 - See [LICENSE](LICENSE) file
 
 ---
 
