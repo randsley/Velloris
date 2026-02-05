@@ -5,6 +5,7 @@ __pycache__/
 .venv/
 env/
 venv/
+venv_*/
 .env
 
 # --- AI & Models (CRITICAL) ---

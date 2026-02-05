@@ -23,6 +23,30 @@ except ImportError:
     print("WARNING: openai-whisper not installed. Install with: pip install openai-whisper")
 
 
+def play_audio(audio_data: np.ndarray, samplerate: int = 24000) -> None:
+    """
+    Simple audio playback without interruption handling.
+
+    Args:
+        audio_data: Audio samples as numpy array
+        samplerate: Sample rate in Hz (default 24000)
+    """
+    # Ensure audio is float32
+    if audio_data.dtype != np.float32:
+        audio_data = audio_data.astype(np.float32)
+
+    # Clip to [-1, 1] range to prevent distortion
+    audio_data = np.clip(audio_data, -1.0, 1.0)
+
+    print("🔊 Playing audio...")
+    try:
+        sd.play(audio_data, samplerate=samplerate)
+        sd.wait()  # Wait for playback to complete
+        print("✓ Playback complete")
+    except Exception as e:
+        print(f"✗ Playback error: {e}")
+
+
 def play_ai_response(audio_data, handler, samplerate=24000):
     """
     Plays audio data in chunks, with immediate interruption capability.

@@ -20,7 +20,7 @@ from pathlib import Path
 from core.orchestrator import LocalVoiceOrchestrator
 from core.brain import VoiceAgentBrain
 from utils.vad_handler import InterruptionHandler
-from utils.audio_io import IntegratedAudioController, play_ai_response
+from utils.audio_io import IntegratedAudioController, play_ai_response, play_audio
 from config import Config
 
 
@@ -138,9 +138,10 @@ class VellorisApplication:
 
                 print(f"Velloris: {response_text}\n")
 
-                # If audio was generated, simulate playing it
+                # If audio was generated, play it
                 if audio_response is not None and len(audio_response) > 0:
-                    print("[Audio would play here]")
+                    print()
+                    play_audio(audio_response, samplerate=24000)
 
                 # Reset interruption status for next turn
                 self.interruption_handler.reset()
@@ -190,7 +191,10 @@ class VellorisApplication:
             if result:
                 audio, sr = result
                 print(f"✓ Generated {len(audio) / sr:.2f} seconds of audio")
-                print("[Audio would play here]")
+
+                # Play the generated audio
+                print()
+                play_audio(audio, samplerate=sr)
             else:
                 print("✗ Failed to generate audio")
 
