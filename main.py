@@ -13,15 +13,12 @@ import asyncio
 import argparse
 import signal
 import sys
-import torch
-import sounddevice as sd
-import numpy as np
 from pathlib import Path
 
 from core.orchestrator import LocalVoiceOrchestrator
 from core.brain import VoiceAgentBrain
 from utils.vad_handler import InterruptionHandler
-from utils.audio_io import IntegratedAudioController, play_ai_response, play_audio
+from utils.audio_io import IntegratedAudioController, play_audio
 from config import Config
 
 
@@ -63,9 +60,12 @@ class VellorisApplication:
 
         # Audio controller for realtime mode
         if args.mode == "realtime":
-            self.interruption_handler = InterruptionHandler(threshold=Config.vad.THRESHOLD)
+            self.interruption_handler = InterruptionHandler(
+                threshold=Config.vad.THRESHOLD
+            )
             self.audio_controller = IntegratedAudioController(
-                handler=self.interruption_handler, whisper_model=Config.model.WHISPER_MODEL
+                handler=self.interruption_handler,
+                whisper_model=Config.model.WHISPER_MODEL,
             )
         else:
             self.interruption_handler = None
@@ -114,6 +114,7 @@ class VellorisApplication:
         except Exception as e:
             print(f"\n✗ Error in realtime mode: {e}")
             import traceback
+
             traceback.print_exc()
         finally:
             self.cleanup()
@@ -132,9 +133,7 @@ class VellorisApplication:
         while self.running:
             try:
                 # Get user input asynchronously
-                user_input = await asyncio.to_thread(
-                    input, "You: "
-                )
+                user_input = await asyncio.to_thread(input, "You: ")
 
                 if user_input.lower() in ["quit", "exit", "bye"]:
                     print("Goodbye!")
@@ -187,6 +186,7 @@ class VellorisApplication:
         except Exception as e:
             print(f"\n✗ Error in creative mode: {e}")
             import traceback
+
             traceback.print_exc()
         finally:
             self.cleanup()
@@ -224,7 +224,9 @@ class VellorisApplication:
         try:
             # Process with orchestrator in dubbing mode
             print("Generating high-fidelity audio...")
-            result = self.orchestrator.route_request(mode="dubbing", text=script, ref_audio_path=voice_ref)
+            result = self.orchestrator.route_request(
+                mode="dubbing", text=script, ref_audio_path=voice_ref
+            )
 
             if result:
                 audio, sr = result
@@ -239,6 +241,7 @@ class VellorisApplication:
         except Exception as e:
             print(f"✗ Error in dubbing mode: {e}")
             import traceback
+
             traceback.print_exc()
         finally:
             self.cleanup()
@@ -252,6 +255,7 @@ class VellorisApplication:
 
         # Show platform info
         from utils.device_utils import get_platform_info
+
         platform_info = get_platform_info()
         print(f"   Platform: {platform_info['os']} ({platform_info['machine']})")
 
@@ -333,10 +337,26 @@ For full documentation, see README.md
         "--voice",
         type=str,
         default=Config.app.REALTIME_VOICE,
-        choices=["NATF0", "NATF1", "NATF2", "NATF3",
-                 "NATM0", "NATM1", "NATM2", "NATM3",
-                 "VARF0", "VARF1", "VARF2", "VARF3", "VARF4",
-                 "VARM0", "VARM1", "VARM2", "VARM3", "VARM4"],
+        choices=[
+            "NATF0",
+            "NATF1",
+            "NATF2",
+            "NATF3",
+            "NATM0",
+            "NATM1",
+            "NATM2",
+            "NATM3",
+            "VARF0",
+            "VARF1",
+            "VARF2",
+            "VARF3",
+            "VARF4",
+            "VARM0",
+            "VARM1",
+            "VARM2",
+            "VARM3",
+            "VARM4",
+        ],
         help="Voice selection for PersonaPlex (realtime mode): NATF=natural female, NATM=natural male, VARF=varied female, VARM=varied male",
     )
 
@@ -395,6 +415,7 @@ For full documentation, see README.md
     except Exception as e:
         print(f"\n✗ Fatal error: {e}")
         import traceback
+
         traceback.print_exc()
         sys.exit(1)
 

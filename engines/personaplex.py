@@ -23,20 +23,19 @@ Installation:
 
 import torch
 import numpy as np
-import asyncio
-import subprocess
-import tempfile
-from pathlib import Path
 from typing import Optional, Tuple, AsyncIterator
 
 from utils.device_utils import get_optimal_device, get_optimal_dtype
 
 try:
     from moshi.models.loaders import get_moshi_lm
+
     HAS_PERSONAPLEX = True
 except ImportError:
     HAS_PERSONAPLEX = False
-    print("WARNING: PersonaPlex-7B not installed. Install with: pip install moshi-personaplex")
+    print(
+        "WARNING: PersonaPlex-7B not installed. Install with: pip install moshi-personaplex"
+    )
 
 
 class PersonaPlexEngine:
@@ -77,7 +76,9 @@ class PersonaPlexEngine:
         "varied_male_4": "VARM4.pt",
     }
 
-    def __init__(self, device: str = "auto", voice: str = "natural_female_0", persona: str = ""):
+    def __init__(
+        self, device: str = "auto", voice: str = "natural_female_0", persona: str = ""
+    ):
         """
         Initialize PersonaPlex-7B engine.
 
@@ -105,7 +106,9 @@ class PersonaPlexEngine:
             self._load_model()
         else:
             print("[STUB MODE] PersonaPlex-7B will not function without installation.")
-            print("Install with: git clone https://github.com/NVIDIA/personaplex && pip install moshi/.")
+            print(
+                "Install with: git clone https://github.com/NVIDIA/personaplex && pip install moshi/."
+            )
 
     def _load_model(self):
         """Load PersonaPlex-7B model from Hugging Face."""
@@ -115,7 +118,9 @@ class PersonaPlexEngine:
             # Device-specific warnings
             if self.device == "mps":
                 print("⚠ PersonaPlex-7B on MPS (Metal): No native MPS optimization")
-                print("   Performance will be slower than NVIDIA GPU. Consider using CPU mode.")
+                print(
+                    "   Performance will be slower than NVIDIA GPU. Consider using CPU mode."
+                )
             elif self.device == "cpu":
                 print("⚠ PersonaPlex-7B on CPU: Very slow inference")
                 print("   GPU (CUDA or MPS) is strongly recommended.")
@@ -130,7 +135,9 @@ class PersonaPlexEngine:
             self.model = get_moshi_lm(device=self.device)
 
             print("✓ PersonaPlex-7B model loaded successfully")
-            print(f"   Device: {self.device}, Dtype: {str(optimal_dtype).split('.')[-1]}")
+            print(
+                f"   Device: {self.device}, Dtype: {str(optimal_dtype).split('.')[-1]}"
+            )
 
         except Exception as e:
             print(f"✗ Failed to load PersonaPlex-7B: {e}")
@@ -165,9 +172,12 @@ class PersonaPlexEngine:
             # Resample to 24kHz if needed
             if sr != 24000:
                 from utils.audio_utils import resample_audio
+
                 audio = resample_audio(audio, sr, 24000)
 
-            print(f"Processing {len(audio)/24000:.2f}s of user speech with PersonaPlex-7B...")
+            print(
+                f"Processing {len(audio)/24000:.2f}s of user speech with PersonaPlex-7B..."
+            )
             print(f"  Voice: {self.AVAILABLE_VOICES[self.voice]}")
             if self.persona:
                 print(f"  Persona: {self.persona}")
@@ -176,7 +186,9 @@ class PersonaPlexEngine:
                 # PersonaPlex-7B generates response audio
                 # Note: Full implementation requires the Moshi library
                 # For now, return stub response
-                agent_audio = np.zeros(int(24000 * 2), dtype=np.float32)  # 2s silence stub
+                agent_audio = np.zeros(
+                    int(24000 * 2), dtype=np.float32
+                )  # 2s silence stub
 
             return agent_audio, 24000
 
@@ -208,7 +220,7 @@ class PersonaPlexEngine:
         try:
             from engines.qwen_tts import Qwen3TTSEngine
 
-            if not hasattr(self, '_qwen3_tts') or self._qwen3_tts is None:
+            if not hasattr(self, "_qwen3_tts") or self._qwen3_tts is None:
                 self._qwen3_tts = Qwen3TTSEngine(device=self.device)
 
             result = self._qwen3_tts.generate_dubbing(
@@ -311,7 +323,7 @@ class PersonaPlexEngine:
         sr: int = 24000,
         voice_prompt: Optional[str] = None,
         text_prompt: Optional[str] = None,
-        streaming: bool = False
+        streaming: bool = False,
     ) -> Optional[Tuple[np.ndarray, int]]:
         """
         PRIMARY METHOD: Generate end-to-end speech-to-speech response.
@@ -344,13 +356,18 @@ class PersonaPlexEngine:
             # Resample to 24kHz if needed
             if sr != 24000:
                 from utils.audio_utils import resample_audio
+
                 audio = resample_audio(audio, sr, 24000)
 
             # Use instance voice/persona if not overridden
-            voice_file = voice_prompt or self.AVAILABLE_VOICES.get(self.voice, "NATF2.pt")
+            voice_file = voice_prompt or self.AVAILABLE_VOICES.get(
+                self.voice, "NATF2.pt"
+            )
             persona_text = text_prompt or self.persona or "You are a helpful assistant."
 
-            print(f"🎙️  Processing {len(audio)/24000:.2f}s with PersonaPlex-7B (end-to-end S2S)")
+            print(
+                f"🎙️  Processing {len(audio)/24000:.2f}s with PersonaPlex-7B (end-to-end S2S)"
+            )
             print(f"   Voice: {voice_file}")
             print(f"   Persona: {persona_text[:60]}...")
 
@@ -377,13 +394,14 @@ class PersonaPlexEngine:
         except Exception as e:
             print(f"✗ S2S generation error: {e}")
             import traceback
+
             traceback.print_exc()
             return None
 
     def unload(self):
         """Unload models to free memory."""
         self.model = None
-        if hasattr(self, '_qwen3_tts'):
+        if hasattr(self, "_qwen3_tts"):
             self._qwen3_tts = None
         print("✓ PersonaPlex-7B engine unloaded")
 
@@ -403,7 +421,7 @@ if __name__ == "__main__":
     engine = PersonaPlexEngine(
         device="cpu",
         voice="natural_female_0",
-        persona="A helpful and friendly AI assistant"
+        persona="A helpful and friendly AI assistant",
     )
 
     print("\n✓ PersonaPlex-7B engine initialized")

@@ -127,6 +127,7 @@ def validate_flash_attention(device: str) -> bool:
     # (Ampere, Hopper, etc.)
     try:
         import flash_attn
+
         return torch.cuda.is_available()
     except ImportError:
         return False
@@ -185,14 +186,16 @@ def print_device_info(device: str = "auto"):
     print(f"Platform: {platform_info['os']} ({platform_info['machine']})")
     print(f"Python: {platform_info['python_version']}")
 
-    print(f"\nDetected Hardware:")
+    print("\nDetected Hardware:")
     print(f"  CUDA Available: {platform_info['cuda_available']}")
     print(f"  MPS Available: {platform_info['mps_available']}")
 
     if platform_info["cuda_available"]:
         print(f"  CUDA Version: {platform_info.get('cuda_version', 'Unknown')}")
         print(f"  GPU Device: {platform_info.get('cuda_device', 'Unknown')}")
-        print(f"  Compute Capability: {platform_info.get('cuda_capability', 'Unknown')}")
+        print(
+            f"  Compute Capability: {platform_info.get('cuda_capability', 'Unknown')}"
+        )
 
     print(f"\nSelected Device: {device.upper()}")
 
@@ -201,18 +204,22 @@ def print_device_info(device: str = "auto"):
         dtype = get_optimal_dtype(device)
         fa2_available = validate_flash_attention(device)
         print(f"  Optimal dtype: {str(dtype).split('.')[-1]}")
-        print(f"  FlashAttention 2: {'✅ Available' if fa2_available else '❌ Not available'}")
-        print(f"  Memory: {torch.cuda.get_device_properties(0).total_memory / 1e9:.1f} GB")
+        print(
+            f"  FlashAttention 2: {'✅ Available' if fa2_available else '❌ Not available'}"
+        )
+        print(
+            f"  Memory: {torch.cuda.get_device_properties(0).total_memory / 1e9:.1f} GB"
+        )
 
     elif device == "mps":
-        print(f"  Optimal dtype: float32")
-        print(f"  FlashAttention 2: ❌ Not supported on MPS")
-        print(f"  Note: Models will use PyTorch's native MPS ops")
+        print("  Optimal dtype: float32")
+        print("  FlashAttention 2: ❌ Not supported on MPS")
+        print("  Note: Models will use PyTorch's native MPS ops")
 
     else:  # CPU
-        print(f"  Optimal dtype: float32")
-        print(f"  FlashAttention 2: ❌ Not supported on CPU")
-        print(f"  Note: CPU inference is slower than GPU")
+        print("  Optimal dtype: float32")
+        print("  FlashAttention 2: ❌ Not supported on CPU")
+        print("  Note: CPU inference is slower than GPU")
 
     print()
 

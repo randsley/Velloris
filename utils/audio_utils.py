@@ -5,7 +5,6 @@ Audio utility functions for resampling, normalization, and chunking.
 import numpy as np
 import librosa
 import torch
-import torchaudio
 
 
 def resample_audio(audio, sr_from, sr_to):
@@ -37,9 +36,7 @@ def resample_audio(audio, sr_from, sr_to):
             (audio.shape[0], int(audio.shape[1] * sr_to / sr_from)), dtype=audio.dtype
         )
         for i in range(audio.shape[0]):
-            resampled[i] = librosa.resample(
-                audio[i], orig_sr=sr_from, target_sr=sr_to
-            )
+            resampled[i] = librosa.resample(audio[i], orig_sr=sr_from, target_sr=sr_to)
 
     return resampled.astype(np.float32)
 
@@ -127,7 +124,9 @@ if __name__ == "__main__":
 
     # Test resample
     resampled = resample_audio(test_audio, 16000, 24000)
-    print(f"Resample test: {len(test_audio)} samples @ 16kHz -> {len(resampled)} samples @ 24kHz")
+    print(
+        f"Resample test: {len(test_audio)} samples @ 16kHz -> {len(resampled)} samples @ 24kHz"
+    )
 
     # Test normalize
     normalized = normalize_audio(test_audio, target_db=-20.0)

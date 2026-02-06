@@ -24,7 +24,6 @@ Velloris achieves versatile voice AI through three specialized modes:
 Manages engine lifecycle with lazy loading for memory efficiency.
 """
 
-import torch
 import numpy as np
 from typing import Optional, Tuple
 from pathlib import Path
@@ -68,10 +67,12 @@ class LocalVoiceOrchestrator:
         self.ollama_brain = None  # Lazy-loaded for creative mode
 
         print(f"🔧 Orchestrator initialized on {self.device.upper()}")
-        print(f"   Platform: {self.platform_info['os']} ({self.platform_info['machine']})")
-        print(f"   Modes available:")
-        print(f"     • realtime: PersonaPlex-7B (end-to-end S2S, no LLM)")
-        print(f"     • dubbing: Qwen3-TTS (high-fidelity narration)")
+        print(
+            f"   Platform: {self.platform_info['os']} ({self.platform_info['machine']})"
+        )
+        print("   Modes available:")
+        print("     • realtime: PersonaPlex-7B (end-to-end S2S, no LLM)")
+        print("     • dubbing: Qwen3-TTS (high-fidelity narration)")
         print(f"     • creative: {self.llm_model} + Qwen3-TTS (emotional synthesis)")
 
     def _load_personaplex(self):
@@ -108,6 +109,7 @@ class LocalVoiceOrchestrator:
         print(f"\n📦 Loading Ollama ({self.llm_model}) for creative mode...")
         try:
             from langchain_ollama import OllamaLLM
+
             # Test if Ollama is accessible
             test_llm = OllamaLLM(model=self.llm_model)
             # Simple test to see if it responds
@@ -116,7 +118,7 @@ class LocalVoiceOrchestrator:
             print(f"✓ Ollama {self.llm_model} ready")
         except Exception as e:
             print(f"❌ Failed to connect to Ollama: {e}")
-            print(f"   Make sure Ollama is running: ollama serve")
+            print("   Make sure Ollama is running: ollama serve")
             print(f"   And model is available: ollama pull {self.llm_model}")
             self.ollama_brain = None
 
@@ -144,7 +146,7 @@ class LocalVoiceOrchestrator:
         voice_prompt: Optional[str] = None,
         text_prompt: Optional[str] = None,
         emotion: Optional[str] = None,
-        **kwargs
+        **kwargs,
     ) -> Optional[Tuple[np.ndarray, int]]:
         """
         Route a request to the appropriate engine based on mode.
@@ -206,14 +208,14 @@ class LocalVoiceOrchestrator:
 
         else:
             print(f"❌ Unknown mode: {mode}")
-            print(f"   Available modes: 'realtime', 'dubbing', 'creative'")
+            print("   Available modes: 'realtime', 'dubbing', 'creative'")
             return None
 
     def _handle_realtime(
         self,
         audio_input: np.ndarray,
         voice_prompt: Optional[str] = None,
-        text_prompt: Optional[str] = None
+        text_prompt: Optional[str] = None,
     ) -> Optional[Tuple[np.ndarray, int]]:
         """
         Handle real-time mode: PersonaPlex end-to-end S2S.
@@ -240,7 +242,7 @@ class LocalVoiceOrchestrator:
             print("❌ PersonaPlex engine not available")
             return None
 
-        print(f"\n🎯 [REALTIME MODE] PersonaPlex end-to-end S2S")
+        print("\n🎯 [REALTIME MODE] PersonaPlex end-to-end S2S")
         print(f"   Input: {len(audio_input)/24000:.2f}s of user audio")
 
         try:
@@ -250,7 +252,7 @@ class LocalVoiceOrchestrator:
                 sr=24000,
                 voice_prompt=voice_prompt,
                 text_prompt=text_prompt,
-                streaming=False  # TODO: Enable streaming for full-duplex
+                streaming=False,  # TODO: Enable streaming for full-duplex
             )
 
             if result:
@@ -264,6 +266,7 @@ class LocalVoiceOrchestrator:
         except Exception as e:
             print(f"❌ Error: {e}")
             import traceback
+
             traceback.print_exc()
             return None
 
@@ -271,7 +274,7 @@ class LocalVoiceOrchestrator:
         self,
         text: str,
         emotion: Optional[str] = None,
-        ref_audio_path: Optional[str] = None
+        ref_audio_path: Optional[str] = None,
     ) -> Optional[Tuple[np.ndarray, int]]:
         """
         Handle creative mode: Ollama LLM + Qwen3-TTS emotional synthesis.
@@ -301,19 +304,22 @@ class LocalVoiceOrchestrator:
             print("❌ Qwen3-TTS engine not available")
             return None
 
-        print(f"\n🎯 [CREATIVE MODE] Ollama + Qwen3-TTS")
+        print("\n🎯 [CREATIVE MODE] Ollama + Qwen3-TTS")
         print(f"   Input: {text[:100]}{'...' if len(text) > 100 else ''}")
 
         try:
             # Step 1: Generate creative response with Ollama
             print(f"   🧠 Generating response with {self.llm_model}...")
             from langchain_ollama import OllamaLLM
+
             llm = OllamaLLM(model=self.llm_model)
             response_text = llm.invoke(text)
-            print(f"   LLM response: {response_text[:100]}{'...' if len(response_text) > 100 else ''}")
+            print(
+                f"   LLM response: {response_text[:100]}{'...' if len(response_text) > 100 else ''}"
+            )
 
             # Step 2: Synthesize with emotion control
-            print(f"   🎙️  Synthesizing with Qwen3-TTS...")
+            print("   🎙️  Synthesizing with Qwen3-TTS...")
             if emotion:
                 print(f"   Emotion: {emotion}")
 
@@ -321,7 +327,7 @@ class LocalVoiceOrchestrator:
                 text=response_text,
                 ref_audio_path=ref_audio_path,
                 language="english",
-                instruct=emotion or ""
+                instruct=emotion or "",
             )
 
             if result:
@@ -335,6 +341,7 @@ class LocalVoiceOrchestrator:
         except Exception as e:
             print(f"❌ Error: {e}")
             import traceback
+
             traceback.print_exc()
             return None
 
@@ -360,7 +367,7 @@ class LocalVoiceOrchestrator:
             print("❌ Qwen3-TTS engine not available")
             return None
 
-        print(f"\n🎯 [DUBBING MODE] Qwen3-TTS High-Fidelity")
+        print("\n🎯 [DUBBING MODE] Qwen3-TTS High-Fidelity")
         print(f"   Script: {text[:100]}{'...' if len(text) > 100 else ''}")
 
         if ref_audio_path:
@@ -368,7 +375,7 @@ class LocalVoiceOrchestrator:
             if ref_path.exists():
                 print(f"   Voice reference: {ref_audio_path}")
             else:
-                print(f"   ⚠️  Reference not found, using default voice")
+                print("   ⚠️  Reference not found, using default voice")
 
         try:
             result = self.qwen3_engine.generate_dubbing(
@@ -386,6 +393,7 @@ class LocalVoiceOrchestrator:
         except Exception as e:
             print(f"❌ Error: {e}")
             import traceback
+
             traceback.print_exc()
             return None
 

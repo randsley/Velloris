@@ -6,7 +6,6 @@ Centralized configuration for audio settings, model settings, and VAD parameters
 
 import os
 from pathlib import Path
-from typing import Optional
 from utils.device_utils import get_optimal_device, get_optimal_dtype, get_platform_info
 
 
@@ -51,7 +50,7 @@ class ModelConfig:
     _requested_device = os.getenv("DEFAULT_DEVICE", "auto")
     DEVICE = get_optimal_device(_requested_device)
     _dtype_obj = get_optimal_dtype(DEVICE)
-    DTYPE = str(_dtype_obj).split('.')[-1]  # "float32", "float16", or "bfloat16"
+    DTYPE = str(_dtype_obj).split(".")[-1]  # "float32", "float16", or "bfloat16"
 
     # Platform info
     PLATFORM_INFO = get_platform_info()
@@ -89,8 +88,7 @@ class ApplicationConfig:
     # Real-time mode settings (PersonaPlex end-to-end S2S)
     REALTIME_VOICE = os.getenv("REALTIME_VOICE", "NATF2")  # Default voice
     REALTIME_PERSONA = os.getenv(
-        "REALTIME_PERSONA",
-        "You are a helpful and friendly AI assistant."
+        "REALTIME_PERSONA", "You are a helpful and friendly AI assistant."
     )
     REALTIME_STREAMING = True  # Enable streaming for full-duplex
     REALTIME_TIMEOUT = 30.0  # Timeout for user input (seconds)
@@ -150,7 +148,7 @@ class Config:
 
         # Check VAD threshold
         if not 0.0 <= cls.vad.THRESHOLD <= 1.0:
-            errors.append(f"VAD THRESHOLD must be between 0.0 and 1.0")
+            errors.append("VAD THRESHOLD must be between 0.0 and 1.0")
 
         if errors:
             print("Configuration validation errors:")
@@ -167,7 +165,9 @@ class Config:
 
         # Platform info
         print("\nPlatform:")
-        print(f"  OS: {cls.model.PLATFORM_INFO['os']} ({cls.model.PLATFORM_INFO['machine']})")
+        print(
+            f"  OS: {cls.model.PLATFORM_INFO['os']} ({cls.model.PLATFORM_INFO['machine']})"
+        )
         print(f"  Python: {cls.model.PLATFORM_INFO['python_version']}")
         print(f"  CUDA Available: {cls.model.PLATFORM_INFO['cuda_available']}")
         print(f"  MPS Available: {cls.model.PLATFORM_INFO['mps_available']}")
@@ -194,14 +194,14 @@ class Config:
         print(f"  Log Level: {cls.app.LOG_LEVEL}")
 
         print("\nMode Settings:")
-        print(f"  Real-Time:")
+        print("  Real-Time:")
         print(f"    Voice: {cls.app.REALTIME_VOICE}")
         print(f"    Persona: {cls.app.REALTIME_PERSONA[:50]}...")
         print(f"    Streaming: {cls.app.REALTIME_STREAMING}")
-        print(f"  Creative:")
+        print("  Creative:")
         print(f"    LLM: {cls.app.CREATIVE_LLM}")
         print(f"    Emotion: {cls.app.CREATIVE_DEFAULT_EMOTION or 'None'}")
-        print(f"  Dubbing:")
+        print("  Dubbing:")
         print(f"    Chunk Size: {cls.app.DUBBING_CHUNK_SIZE}\n")
 
 

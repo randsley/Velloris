@@ -9,7 +9,6 @@ Processes voice turns based on operating mode:
 The brain is primarily used for creative mode.
 """
 
-import asyncio
 import numpy as np
 from typing import Optional, AsyncIterator, Tuple
 
@@ -29,7 +28,7 @@ class VoiceAgentBrain:
         mode: str = "creative",
         model_name: str = "llama3",
         tts_engine=None,
-        orchestrator=None
+        orchestrator=None,
     ):
         """
         Initialize the brain.
@@ -50,17 +49,22 @@ class VoiceAgentBrain:
         if mode == "creative":
             try:
                 from langchain_ollama import OllamaLLM
+
                 self.llm = OllamaLLM(model=model_name)
                 print(f"ℹ️  Brain initialized for creative mode with {model_name}")
             except Exception as e:
                 print(f"⚠️  Failed to initialize Ollama: {e}")
-                print(f"   Make sure Ollama is running: ollama serve")
+                print("   Make sure Ollama is running: ollama serve")
         elif mode == "realtime":
-            print(f"ℹ️  Brain initialized for realtime mode (PersonaPlex handles reasoning)")
+            print(
+                "ℹ️  Brain initialized for realtime mode (PersonaPlex handles reasoning)"
+            )
         else:
             print(f"ℹ️  Brain initialized for {mode} mode")
 
-    async def process_voice_turn(self, user_text: str) -> Tuple[str, Optional[np.ndarray]]:
+    async def process_voice_turn(
+        self, user_text: str
+    ) -> Tuple[str, Optional[np.ndarray]]:
         """
         Takes user text, generates LLM response, and optionally synthesizes audio.
 
@@ -74,7 +78,9 @@ class VoiceAgentBrain:
         """
         if self.mode == "realtime":
             print("⚠️  WARNING: Brain.process_voice_turn() not needed in realtime mode!")
-            print("   Use PersonaPlex.generate_s2s_response() directly for realtime S2S.")
+            print(
+                "   Use PersonaPlex.generate_s2s_response() directly for realtime S2S."
+            )
             return user_text, None
 
         if self.mode != "creative":
@@ -85,7 +91,7 @@ class VoiceAgentBrain:
             print("❌ LLM not available. Is Ollama running?")
             return "Error: LLM not available", None
 
-        print(f"🧠 Agent Thinking...")
+        print("🧠 Agent Thinking...")
 
         # Step 1: Generate LLM response
         try:
@@ -107,7 +113,9 @@ class VoiceAgentBrain:
             print(f"❌ LLM error: {e}")
             full_response = "I encountered an error processing your request."
 
-        print(f"💬 Response: {full_response[:100]}{'...' if len(full_response) > 100 else ''}")
+        print(
+            f"💬 Response: {full_response[:100]}{'...' if len(full_response) > 100 else ''}"
+        )
 
         # Step 2: Finalize TTS if streaming
         if self.tts_engine is not None:
@@ -123,12 +131,14 @@ class VoiceAgentBrain:
                 result = self.tts_engine.generate_dubbing(full_response)
                 if result:
                     audio_response = result[0]  # Extract audio array from (audio, sr)
-            except Exception as e:
+            except Exception:
                 pass
         elif self.orchestrator is not None:
             # Use orchestrator's Qwen3-TTS for dubbing
             try:
-                result = self.orchestrator.route_request(text=full_response, mode="dubbing")
+                result = self.orchestrator.route_request(
+                    text=full_response, mode="dubbing"
+                )
                 if result:
                     audio_response = result[0]  # Extract audio array from (audio, sr)
             except Exception as e:

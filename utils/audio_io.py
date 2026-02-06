@@ -17,10 +17,13 @@ from utils.vad_handler import InterruptionHandler
 
 try:
     import whisper
+
     HAS_WHISPER = True
 except ImportError:
     HAS_WHISPER = False
-    print("WARNING: openai-whisper not installed. Install with: pip install openai-whisper")
+    print(
+        "WARNING: openai-whisper not installed. Install with: pip install openai-whisper"
+    )
 
 
 def play_audio(audio_data: np.ndarray, samplerate: int = 24000) -> None:
@@ -142,7 +145,9 @@ class IntegratedAudioController:
 
         # When buffer reaches threshold, transcribe
         if len(self.input_buffer) >= self.buffer_size:
-            buffer_copy = np.array(self.input_buffer[: self.buffer_size], dtype=np.float32)
+            buffer_copy = np.array(
+                self.input_buffer[: self.buffer_size], dtype=np.float32
+            )
             # Keep overlap for context (shift by half)
             self.input_buffer = self.input_buffer[self.buffer_size // 2 :]
 

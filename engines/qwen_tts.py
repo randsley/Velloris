@@ -26,10 +26,15 @@ from pathlib import Path
 from typing import Optional, Tuple
 import warnings
 
-from utils.device_utils import get_optimal_device, get_optimal_dtype, validate_flash_attention
+from utils.device_utils import (
+    get_optimal_device,
+    get_optimal_dtype,
+    validate_flash_attention,
+)
 
 try:
     from qwen_tts import Qwen3TTSModel
+
     HAS_QWEN3_TTS = True
 except ImportError:
     HAS_QWEN3_TTS = False
@@ -37,6 +42,7 @@ except ImportError:
 
 try:
     import soundfile as sf
+
     HAS_SOUNDFILE = True
 except ImportError:
     HAS_SOUNDFILE = False
@@ -98,7 +104,9 @@ class Qwen3TTSEngine:
                 self.dtype = torch.float32
 
         self.model_size = model_size
-        self.use_flash_attention = use_flash_attention and validate_flash_attention(self.device)
+        self.use_flash_attention = use_flash_attention and validate_flash_attention(
+            self.device
+        )
 
         # Verify model size is valid
         if model_size not in self.AVAILABLE_MODELS:
@@ -156,7 +164,7 @@ class Qwen3TTSEngine:
             print("✓ Qwen3-TTS model loaded successfully")
             print(f"   Device: {self.device}, Dtype: {str(self.dtype).split('.')[-1]}")
             if self.use_flash_attention:
-                print(f"   FlashAttention 2: ✅ Enabled")
+                print("   FlashAttention 2: ✅ Enabled")
 
         except Exception as e:
             print(f"✗ Failed to load Qwen3-TTS: {e}")
@@ -265,7 +273,9 @@ class Qwen3TTSEngine:
                             speaker="Ryan",
                         )
                     else:
-                        print("Note: Model requires either speaker, instruct, or ref_audio")
+                        print(
+                            "Note: Model requires either speaker, instruct, or ref_audio"
+                        )
                         return None
 
             # Convert to numpy
@@ -289,6 +299,7 @@ class Qwen3TTSEngine:
         except Exception as e:
             print(f"✗ Error during Qwen3-TTS generation: {e}")
             import traceback
+
             traceback.print_exc()
             return None
 
