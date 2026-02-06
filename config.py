@@ -33,6 +33,23 @@ class AudioConfig:
 class ModelConfig:
     """Model configuration."""
 
+    # Project root directory
+    PROJECT_ROOT = Path(__file__).parent
+
+    # Model storage - project-local for offline/air-gapped use
+    MODELS_DIR = PROJECT_ROOT / "models"
+    OFFLINE_MODE = os.getenv("VELLORIS_OFFLINE", "false").lower() == "true"
+
+    # Model-specific directories
+    QWEN3_TTS_DIR = MODELS_DIR / "qwen3-tts"
+    PERSONAPLEX_DIR = MODELS_DIR / "personaplex"
+    SILERO_VAD_DIR = MODELS_DIR / "silero-vad"
+    WHISPER_DIR = MODELS_DIR / "whisper"
+
+    # Hugging Face model identifiers
+    QWEN3_TTS_MODEL_ID = "Qwen/Qwen3-TTS-12Hz-1.7B-CustomVoice"
+    PERSONAPLEX_MODEL_ID = "nvidia/personaplex-7b-v1"
+
     # Whisper STT settings
     WHISPER_MODEL = os.getenv("WHISPER_MODEL", "base")
     # Options: tiny, base, small, medium, large
@@ -42,8 +59,8 @@ class ModelConfig:
     OLLAMA_MODEL = os.getenv("OLLAMA_MODEL", "llama3")
     OLLAMA_HOST = os.getenv("OLLAMA_HOST", "http://localhost:11434")
 
-    # TTS settings (Coqui XTTS-v2)
-    TTS_MODEL = "v2"  # XTTS-v2 variant
+    # TTS settings
+    TTS_MODEL = "1.7B-CustomVoice"  # Qwen3-TTS variant
     TTS_LANGUAGE = "en"  # Default language
 
     # Device settings (auto-detect if not specified)
@@ -55,10 +72,29 @@ class ModelConfig:
     # Platform info
     PLATFORM_INFO = get_platform_info()
 
-    # Paths
-    MODELS_DIR = Path.home() / ".cache" / "velloris" / "models"
-    VOICES_DIR = Path(__file__).parent / "voices"
+    # Voice paths
+    VOICES_DIR = PROJECT_ROOT / "voices"
     VOICE_REFERENCE = os.getenv("VOICE_REFERENCE", str(VOICES_DIR / "reference.wav"))
+
+    @classmethod
+    def get_local_model_path(cls, model_type: str) -> Path:
+        """Get local path for a model type."""
+        paths = {
+            "qwen3-tts": cls.QWEN3_TTS_DIR,
+            "personaplex": cls.PERSONAPLEX_DIR,
+            "silero-vad": cls.SILERO_VAD_DIR,
+            "whisper": cls.WHISPER_DIR,
+        }
+        return paths.get(model_type, cls.MODELS_DIR)
+
+    @classmethod
+    def is_model_downloaded(cls, model_type: str) -> bool:
+        """Check if a model is downloaded locally."""
+        model_path = cls.get_local_model_path(model_type)
+        if not model_path.exists():
+            return False
+        # Check if directory has content
+        return any(model_path.iterdir()) if model_path.is_dir() else False
 
 
 class VADConfig:
@@ -178,11 +214,22 @@ class Config:
         print(f"  Buffer: {cls.audio.BUFFER_DURATION}s")
 
         print("\nModels:")
+        print(f"  Models Dir: {cls.model.MODELS_DIR}")
+        print(f"  Offline Mode: {cls.model.OFFLINE_MODE}")
         print(f"  Whisper: {cls.model.WHISPER_MODEL}")
         print(f"  LLM: {cls.model.OLLAMA_MODEL}")
         print(f"  Device: {cls.model.DEVICE}")
         print(f"  Dtype: {cls.model.DTYPE}")
         print(f"  Ollama: {cls.model.OLLAMA_HOST}")
+
+        print("\nModel Status:")
+        for model in ["qwen3-tts", "personaplex", "silero-vad", "whisper"]:
+            status = (
+                "[OK] Downloaded"
+                if cls.model.is_model_downloaded(model)
+                else "[X] Not found"
+            )
+            print(f"  {model}: {status}")
 
         print("\nVAD:")
         print(f"  Threshold: {cls.vad.THRESHOLD}")

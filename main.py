@@ -112,7 +112,7 @@ class VellorisApplication:
         except KeyboardInterrupt:
             print("\n\nInterrupted by user")
         except Exception as e:
-            print(f"\n✗ Error in realtime mode: {e}")
+            print(f"\n[X] Error in realtime mode: {e}")
             import traceback
 
             traceback.print_exc()
@@ -184,7 +184,7 @@ class VellorisApplication:
         except KeyboardInterrupt:
             print("\n\nInterrupted by user")
         except Exception as e:
-            print(f"\n✗ Error in creative mode: {e}")
+            print(f"\n[X] Error in creative mode: {e}")
             import traceback
 
             traceback.print_exc()
@@ -213,7 +213,7 @@ class VellorisApplication:
 
         voice_ref = self.args.voice_ref
         if voice_ref and not Path(voice_ref).exists():
-            print(f"⚠ Voice reference not found: {voice_ref}")
+            print(f"[!] Voice reference not found: {voice_ref}")
             voice_ref = None
 
         print(f"Script: {script[:100]}...")
@@ -236,10 +236,10 @@ class VellorisApplication:
                 print()
                 play_audio(audio, samplerate=sr)
             else:
-                print("✗ Failed to generate audio")
+                print("[X] Failed to generate audio")
 
         except Exception as e:
-            print(f"✗ Error in dubbing mode: {e}")
+            print(f"[X] Error in dubbing mode: {e}")
             import traceback
 
             traceback.print_exc()
@@ -403,7 +403,7 @@ For full documentation, see README.md
 
     # Validate configuration
     if not Config.validate():
-        print("\n✗ Configuration validation failed")
+        print("\n[X] Configuration validation failed")
         return
 
     # Create and run application
@@ -413,7 +413,7 @@ For full documentation, see README.md
     except KeyboardInterrupt:
         print("\n\nInterrupted by user")
     except Exception as e:
-        print(f"\n✗ Fatal error: {e}")
+        print(f"\n[X] Fatal error: {e}")
         import traceback
 
         traceback.print_exc()

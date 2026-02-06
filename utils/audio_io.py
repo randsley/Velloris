@@ -41,13 +41,13 @@ def play_audio(audio_data: np.ndarray, samplerate: int = 24000) -> None:
     # Clip to [-1, 1] range to prevent distortion
     audio_data = np.clip(audio_data, -1.0, 1.0)
 
-    print("🔊 Playing audio...")
+    print("[AUDIO] Playing audio...")
     try:
         sd.play(audio_data, samplerate=samplerate)
         sd.wait()  # Wait for playback to complete
-        print("✓ Playback complete")
+        print("[OK] Playback complete")
     except Exception as e:
-        print(f"✗ Playback error: {e}")
+        print(f"[X] Playback error: {e}")
 
 
 def play_ai_response(audio_data, handler, samplerate=24000):
@@ -111,8 +111,27 @@ class IntegratedAudioController:
         if HAS_WHISPER:
             print(f"Loading Whisper ({whisper_model}) for STT...")
             try:
-                self.whisper_model = whisper.load_model(whisper_model, device="cpu")
-                print("✓ Whisper model loaded successfully")
+                # Lazy import to avoid circular dependency
+                from config import Config
+
+                # Check for local model first
+                local_path = Config.model.WHISPER_DIR
+                use_local = Config.model.is_model_downloaded("whisper")
+
+                if use_local:
+                    print(f"  Using local model from: {local_path}")
+                    self.whisper_model = whisper.load_model(
+                        whisper_model, device="cpu", download_root=str(local_path)
+                    )
+                elif Config.model.OFFLINE_MODE:
+                    print("[X] Offline mode enabled but Whisper not found locally")
+                    print(f"  Expected path: {local_path}")
+                    print("  Run: python download_models.py --model whisper")
+                else:
+                    self.whisper_model = whisper.load_model(whisper_model, device="cpu")
+
+                if self.whisper_model:
+                    print("[OK] Whisper model loaded successfully")
             except Exception as e:
                 print(f"Failed to load Whisper model: {e}")
         else:

@@ -35,6 +35,11 @@ Thumbs.db
 .vscode/
 .idea/
 
+# --- Test Coverage ---
+.coverage
+htmlcov/
+nul
+
 # --- Other files ---
 Dual-Engine*.md
 CLAUDE.md

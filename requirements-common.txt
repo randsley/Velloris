@@ -1,0 +1,8 @@
+sounddevice
+pyaudio
+librosa
+torchaudio
+silero-vad
+transformers
+accelerate
+langchain

@@ -1,0 +1,15 @@
+# Use the CUDA 13 specific index for 2026 releases
+--extra-index-url https://download.pytorch.org/whl/cu130
+torch
+torchvision
+torchaudio
+
+# ONNX Runtime (CPU by default, uncomment for GPU if compatible)
+onnxruntime # pip install onnxruntime-gpu for CUDA support
+
+# Essential for Qwen3-TTS performance on Windows
+# Note: FA2/3 often requires compiling from source on CUDA 13.1 
+# unless using a pre-built wheel from Dao-AILab
+flash-attn --no-build-isolation
+ninja
+packaging

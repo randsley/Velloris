@@ -51,16 +51,16 @@ class VoiceAgentBrain:
                 from langchain_ollama import OllamaLLM
 
                 self.llm = OllamaLLM(model=model_name)
-                print(f"ℹ️  Brain initialized for creative mode with {model_name}")
+                print(f"[i]  Brain initialized for creative mode with {model_name}")
             except Exception as e:
-                print(f"⚠️  Failed to initialize Ollama: {e}")
+                print(f"[!]  Failed to initialize Ollama: {e}")
                 print("   Make sure Ollama is running: ollama serve")
         elif mode == "realtime":
             print(
-                "ℹ️  Brain initialized for realtime mode (PersonaPlex handles reasoning)"
+                "[i]  Brain initialized for realtime mode (PersonaPlex handles reasoning)"
             )
         else:
-            print(f"ℹ️  Brain initialized for {mode} mode")
+            print(f"[i]  Brain initialized for {mode} mode")
 
     async def process_voice_turn(
         self, user_text: str
@@ -77,21 +77,23 @@ class VoiceAgentBrain:
             Tuple of (response_text, audio_response) where audio_response may be None
         """
         if self.mode == "realtime":
-            print("⚠️  WARNING: Brain.process_voice_turn() not needed in realtime mode!")
+            print(
+                "[!]  WARNING: Brain.process_voice_turn() not needed in realtime mode!"
+            )
             print(
                 "   Use PersonaPlex.generate_s2s_response() directly for realtime S2S."
             )
             return user_text, None
 
         if self.mode != "creative":
-            print(f"⚠️  WARNING: Brain only used in creative mode, not '{self.mode}'")
+            print(f"[!]  WARNING: Brain only used in creative mode, not '{self.mode}'")
             return user_text, None
 
         if self.llm is None:
-            print("❌ LLM not available. Is Ollama running?")
+            print("[X] LLM not available. Is Ollama running?")
             return "Error: LLM not available", None
 
-        print("🧠 Agent Thinking...")
+        print("[BRAIN] Agent Thinking...")
 
         # Step 1: Generate LLM response
         try:
@@ -110,7 +112,7 @@ class VoiceAgentBrain:
                         pass
 
         except Exception as e:
-            print(f"❌ LLM error: {e}")
+            print(f"[X] LLM error: {e}")
             full_response = "I encountered an error processing your request."
 
         print(
@@ -142,7 +144,7 @@ class VoiceAgentBrain:
                 if result:
                     audio_response = result[0]  # Extract audio array from (audio, sr)
             except Exception as e:
-                print(f"❌ TTS error: {e}")
+                print(f"[X] TTS error: {e}")
 
         return full_response, audio_response
 
@@ -159,7 +161,7 @@ class VoiceAgentBrain:
             Individual tokens from the LLM
         """
         if self.llm is None:
-            print("❌ LLM not available for streaming")
+            print("[X] LLM not available for streaming")
             yield ""
             return
 
@@ -168,7 +170,7 @@ class VoiceAgentBrain:
             async for token in self.llm.astream(user_text):
                 yield token
         except Exception as e:
-            print(f"❌ Streaming error: {e}")
+            print(f"[X] Streaming error: {e}")
             yield ""
 
     def interrupt(self):

@@ -181,7 +181,7 @@ def print_device_info(device: str = "auto"):
 
     platform_info = get_platform_info()
 
-    print("\n🖥️  Device Information")
+    print("\n[PC]  Device Information")
     print("=" * 50)
     print(f"Platform: {platform_info['os']} ({platform_info['machine']})")
     print(f"Python: {platform_info['python_version']}")
@@ -205,7 +205,7 @@ def print_device_info(device: str = "auto"):
         fa2_available = validate_flash_attention(device)
         print(f"  Optimal dtype: {str(dtype).split('.')[-1]}")
         print(
-            f"  FlashAttention 2: {'✅ Available' if fa2_available else '❌ Not available'}"
+            f"  FlashAttention 2: {'[OK] Available' if fa2_available else '[X] Not available'}"
         )
         print(
             f"  Memory: {torch.cuda.get_device_properties(0).total_memory / 1e9:.1f} GB"
@@ -213,12 +213,12 @@ def print_device_info(device: str = "auto"):
 
     elif device == "mps":
         print("  Optimal dtype: float32")
-        print("  FlashAttention 2: ❌ Not supported on MPS")
+        print("  FlashAttention 2: [X] Not supported on MPS")
         print("  Note: Models will use PyTorch's native MPS ops")
 
     else:  # CPU
         print("  Optimal dtype: float32")
-        print("  FlashAttention 2: ❌ Not supported on CPU")
+        print("  FlashAttention 2: [X] Not supported on CPU")
         print("  Note: CPU inference is slower than GPU")
 
     print()

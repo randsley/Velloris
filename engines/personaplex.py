@@ -25,6 +25,7 @@ import torch
 import numpy as np
 from typing import Optional, Tuple, AsyncIterator
 
+from config import Config
 from utils.device_utils import get_optimal_device, get_optimal_dtype
 
 try:
@@ -111,42 +112,72 @@ class PersonaPlexEngine:
             )
 
     def _load_model(self):
-        """Load PersonaPlex-7B model from Hugging Face."""
+        """Load PersonaPlex-7B model from local path or Hugging Face."""
         try:
-            print(f"Loading PersonaPlex-7B (voice: {self.voice})...")
+            # Check for local model first
+            local_path = Config.model.PERSONAPLEX_DIR
+            use_local = Config.model.is_model_downloaded("personaplex")
+
+            if use_local:
+                print(
+                    f"Loading PersonaPlex-7B (voice: {self.voice}) from local path..."
+                )
+                print(f"Path: {local_path}")
+            else:
+                if Config.model.OFFLINE_MODE:
+                    print(
+                        "[X] Offline mode enabled but PersonaPlex-7B not found locally"
+                    )
+                    print(f"  Expected path: {local_path}")
+                    print("  Run: python download_models.py --model personaplex")
+                    self.model = None
+                    return
+
+                print(
+                    f"Loading PersonaPlex-7B (voice: {self.voice}) from Hugging Face..."
+                )
 
             # Device-specific warnings
             if self.device == "mps":
-                print("⚠ PersonaPlex-7B on MPS (Metal): No native MPS optimization")
+                print("[!] PersonaPlex-7B on MPS (Metal): No native MPS optimization")
                 print(
                     "   Performance will be slower than NVIDIA GPU. Consider using CPU mode."
                 )
             elif self.device == "cpu":
-                print("⚠ PersonaPlex-7B on CPU: Very slow inference")
+                print("[!] PersonaPlex-7B on CPU: Very slow inference")
                 print("   GPU (CUDA or MPS) is strongly recommended.")
 
             # Get optimal dtype for device
             optimal_dtype = get_optimal_dtype(self.device)
 
-            # Load model using moshi-personaplex package
-            from moshi.models.loaders import get_moshi_lm
+            # Load the Moshi LM model (with local path if available)
+            if use_local:
+                self.model = get_moshi_lm(
+                    device=self.device, checkpoint_dir=str(local_path)
+                )
+            else:
+                self.model = get_moshi_lm(device=self.device)
 
-            # Load the Moshi LM model
-            self.model = get_moshi_lm(device=self.device)
-
-            print("✓ PersonaPlex-7B model loaded successfully")
+            print("[OK] PersonaPlex-7B model loaded successfully")
             print(
                 f"   Device: {self.device}, Dtype: {str(optimal_dtype).split('.')[-1]}"
             )
+            print(f"   Source: {'local' if use_local else 'Hugging Face'}")
 
         except Exception as e:
-            print(f"✗ Failed to load PersonaPlex-7B: {e}")
+            print(f"[X] Failed to load PersonaPlex-7B: {e}")
             print("\nSetup steps:")
-            print("  1. Install system dependency: brew install opus")
+            print(
+                "  1. Install system dependency: brew install opus (macOS) / apt install libopus-dev (Linux)"
+            )
             print("  2. Clone repo: git clone https://github.com/NVIDIA/personaplex")
             print("  3. Install: pip install personaplex/moshi/.")
             print("  4. Accept license: huggingface-cli login")
             print("  5. Set token: export HF_TOKEN=<your_token>")
+            if Config.model.OFFLINE_MODE:
+                print(
+                    "\nFor offline mode, run: python download_models.py --model personaplex"
+                )
             self.model = None
 
     def process_speech(
@@ -306,7 +337,7 @@ class PersonaPlexEngine:
             if agent_audio_result:
                 agent_audio, audio_sr = agent_audio_result
                 duration = len(agent_audio) / audio_sr
-                print(f"✓ Generated {duration:.2f}s of agent speech")
+                print(f"[OK] Generated {duration:.2f}s of agent speech")
                 # Note: For actual implementation, extract text from agent_audio
                 # For now, return placeholder
                 return "[Agent Response]", (agent_audio, audio_sr)
@@ -366,7 +397,7 @@ class PersonaPlexEngine:
             persona_text = text_prompt or self.persona or "You are a helpful assistant."
 
             print(
-                f"🎙️  Processing {len(audio)/24000:.2f}s with PersonaPlex-7B (end-to-end S2S)"
+                f"[MIC]  Processing {len(audio)/24000:.2f}s with PersonaPlex-7B (end-to-end S2S)"
             )
             print(f"   Voice: {voice_file}")
             print(f"   Persona: {persona_text[:60]}...")
@@ -387,12 +418,12 @@ class PersonaPlexEngine:
                 agent_audio = np.zeros(int(24000 * 2), dtype=np.float32)
 
             duration = len(agent_audio) / 24000
-            print(f"✓ Generated {duration:.2f}s of agent speech")
+            print(f"[OK] Generated {duration:.2f}s of agent speech")
 
             return agent_audio, 24000
 
         except Exception as e:
-            print(f"✗ S2S generation error: {e}")
+            print(f"[X] S2S generation error: {e}")
             import traceback
 
             traceback.print_exc()
@@ -403,7 +434,7 @@ class PersonaPlexEngine:
         self.model = None
         if hasattr(self, "_qwen3_tts"):
             self._qwen3_tts = None
-        print("✓ PersonaPlex-7B engine unloaded")
+        print("[OK] PersonaPlex-7B engine unloaded")
 
     @classmethod
     def get_available_voices(cls):
@@ -424,7 +455,7 @@ if __name__ == "__main__":
         persona="A helpful and friendly AI assistant",
     )
 
-    print("\n✓ PersonaPlex-7B engine initialized")
+    print("\n[OK] PersonaPlex-7B engine initialized")
     print(f"  Sample rate: {engine.sample_rate}Hz")
     print(f"  Voice: {engine.voice}")
     print(f"  Persona: {engine.persona if engine.persona else 'Default'}")

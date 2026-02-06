@@ -26,6 +26,7 @@ from pathlib import Path
 from typing import Optional, Tuple
 import warnings
 
+from config import Config
 from utils.device_utils import (
     get_optimal_device,
     get_optimal_dtype,
@@ -100,7 +101,7 @@ class Qwen3TTSEngine:
             self.dtype = self._parse_dtype(dtype)
             # Warn if dtype may not be optimal for device
             if self.dtype == torch.bfloat16 and self.device == "mps":
-                print("⚠ bfloat16 not well-supported on MPS, using float32 instead")
+                print("[!] bfloat16 not well-supported on MPS, using float32 instead")
                 self.dtype = torch.float32
 
         self.model_size = model_size
@@ -138,16 +139,33 @@ class Qwen3TTSEngine:
         return dtype_map[dtype_str]
 
     def _load_model(self):
-        """Load Qwen3-TTS model from Hugging Face."""
+        """Load Qwen3-TTS model from local path or Hugging Face."""
         try:
-            print(f"Loading Qwen3-TTS ({self.model_size}) from Hugging Face...")
-            print(f"Model: {self.model_name}")
+            # Check for local model first
+            local_path = Config.model.QWEN3_TTS_DIR
+            use_local = Config.model.is_model_downloaded("qwen3-tts")
+
+            if use_local:
+                print(f"Loading Qwen3-TTS ({self.model_size}) from local path...")
+                print(f"Path: {local_path}")
+                model_source = str(local_path)
+            else:
+                if Config.model.OFFLINE_MODE:
+                    print("[X] Offline mode enabled but Qwen3-TTS not found locally")
+                    print(f"  Expected path: {local_path}")
+                    print("  Run: python download_models.py --model tts")
+                    self.model = None
+                    return
+
+                print(f"Loading Qwen3-TTS ({self.model_size}) from Hugging Face...")
+                print(f"Model: {self.model_name}")
+                model_source = self.model_name
 
             # Device-specific warnings
             if self.device == "mps":
-                print("⚠ Qwen3-TTS on MPS: Slower than CUDA, limited dtype support")
+                print("[!] Qwen3-TTS on MPS: Slower than CUDA, limited dtype support")
             elif self.device == "cpu":
-                print("⚠ Qwen3-TTS on CPU: Very slow. GPU is recommended.")
+                print("[!] Qwen3-TTS on CPU: Very slow. GPU is recommended.")
 
             # Determine attention implementation
             # FlashAttention 2 only works on CUDA
@@ -155,24 +173,28 @@ class Qwen3TTSEngine:
 
             # Load model
             self.model = Qwen3TTSModel.from_pretrained(
-                self.model_name,
+                model_source,
                 device_map=self.device,
                 dtype=self.dtype,
                 attn_implementation=attn_impl if self.device == "cuda" else None,
             )
 
-            print("✓ Qwen3-TTS model loaded successfully")
+            print("[OK] Qwen3-TTS model loaded successfully")
             print(f"   Device: {self.device}, Dtype: {str(self.dtype).split('.')[-1]}")
+            print(f"   Source: {'local' if use_local else 'Hugging Face'}")
             if self.use_flash_attention:
-                print("   FlashAttention 2: ✅ Enabled")
+                print("   FlashAttention 2: [OK] Enabled")
 
         except Exception as e:
-            print(f"✗ Failed to load Qwen3-TTS: {e}")
+            print(f"[X] Failed to load Qwen3-TTS: {e}")
             print("\nMake sure you have:")
             print("  1. Installed qwen-tts: pip install qwen-tts")
-            print("  2. Internet connection for downloading from Hugging Face")
+            if not Config.model.OFFLINE_MODE:
+                print("  2. Internet connection for downloading from Hugging Face")
             print("  3. Sufficient disk space (~3-5GB)")
             print("  4. Python 3.12+ (recommended)")
+            if Config.model.OFFLINE_MODE:
+                print("\nFor offline mode, run: python download_models.py --model tts")
             self.model = None
 
     def generate_dubbing(
@@ -292,12 +314,12 @@ class Qwen3TTSEngine:
                 audio = audio / (audio.max() + 1e-6)
 
             duration = len(audio) / sr
-            print(f"✓ Generated {duration:.2f}s of audio at {sr}Hz")
+            print(f"[OK] Generated {duration:.2f}s of audio at {sr}Hz")
 
             return audio, sr
 
         except Exception as e:
-            print(f"✗ Error during Qwen3-TTS generation: {e}")
+            print(f"[X] Error during Qwen3-TTS generation: {e}")
             import traceback
 
             traceback.print_exc()
@@ -364,7 +386,7 @@ class Qwen3TTSEngine:
     def unload(self):
         """Unload model to free memory."""
         self.model = None
-        print("✓ Qwen3-TTS model unloaded")
+        print("[OK] Qwen3-TTS model unloaded")
 
     @classmethod
     def get_available_models(cls):

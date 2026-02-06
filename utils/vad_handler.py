@@ -1,47 +1,114 @@
 import torch
 import numpy as np
 
-# Load Silero VAD locally (first time it will download the model)
-# Make sure you have 'sounddevice' and 'torchaudio' installed for proper functioning
-try:
-    model, utils = torch.hub.load(
-        repo_or_dir="snakers4/silero-vad", model="silero_vad", force_reload=False
-    )
-    (get_speech_timestamps, save_audio, read_audio, VADIterator, collect_chunks) = utils
-except Exception as e:
-    print(
-        f"Could not load Silero VAD. Ensure internet connectivity or 'snakers4/silero-vad' is available locally: {e}"
-    )
+# Silero VAD module-level variables (lazy loaded)
+_vad_model = None
+_vad_utils = None
+_vad_loaded = False
 
-    # Define dummy functions if VAD can't be loaded to prevent crashes
-    class DummyVADIterator:
-        def __call__(self, *args, **kwargs):
-            return {}
 
-        def reset_states(self):
-            pass
+def _load_silero_vad():
+    """Load Silero VAD from local path or torch.hub (lazy loading)."""
+    global _vad_model, _vad_utils, _vad_loaded
 
-    VADIterator = DummyVADIterator
-    model = None  # Indicate model not loaded
+    if _vad_loaded:
+        return _vad_model, _vad_utils
+
+    # Lazy import to avoid circular dependency
+    from config import Config
+
+    local_path = Config.model.SILERO_VAD_DIR
+    local_model_file = local_path / "silero_vad.jit"
+
+    # Try local model first
+    if local_model_file.exists():
+        print(f"Loading Silero VAD from local path: {local_model_file}")
+        try:
+            _vad_model = torch.jit.load(str(local_model_file))
+            # Get utils from torch.hub (they're just Python functions)
+            _, _vad_utils = torch.hub.load(
+                repo_or_dir="snakers4/silero-vad",
+                model="silero_vad",
+                force_reload=False,
+                trust_repo=True,
+            )
+            _vad_loaded = True
+            return _vad_model, _vad_utils
+        except Exception as e:
+            print(f"Failed to load local Silero VAD: {e}")
+
+    # Check offline mode
+    if Config.model.OFFLINE_MODE:
+        print("[X] Offline mode enabled but Silero VAD not found locally")
+        print(f"  Expected path: {local_model_file}")
+        print("  Run: python download_models.py --model vad")
+        _vad_loaded = True
+        return None, None
+
+    # Fall back to torch.hub download
+    print("Loading Silero VAD from torch.hub...")
+    try:
+        _vad_model, _vad_utils = torch.hub.load(
+            repo_or_dir="snakers4/silero-vad",
+            model="silero_vad",
+            force_reload=False,
+            trust_repo=True,
+        )
+        _vad_loaded = True
+        return _vad_model, _vad_utils
+    except Exception as e:
+        print(f"Failed to load Silero VAD: {e}")
+        _vad_loaded = True
+        return None, None
+
+
+class DummyVADIterator:
+    """Dummy VAD iterator when Silero VAD is not available."""
+
+    def __call__(self, *args, **kwargs):
+        return {}
+
+    def reset_states(self):
+        pass
 
 
 class InterruptionHandler:
+    """
+    Voice Activity Detection handler for interruption detection.
+
+    Uses Silero VAD for detecting speech in audio chunks.
+    VAD model is loaded lazily on first instantiation.
+    """
+
     def __init__(self, threshold=0.5):
+        # Load VAD model lazily
+        model, utils = _load_silero_vad()
+
+        self._model = model
+        self.is_interrupted = False
+
         if model is None:
             print(
                 "WARNING: Silero VAD model not loaded. Interruption detection will not function."
             )
-            self.vad_iterator = VADIterator()  # Use dummy
+            self.vad_iterator = DummyVADIterator()
         else:
+            # Extract VADIterator from utils
+            (
+                get_speech_timestamps,
+                save_audio,
+                read_audio,
+                VADIterator,
+                collect_chunks,
+            ) = utils
             self.vad_iterator = VADIterator(model, threshold=threshold)
-        self.is_interrupted = False
 
     def check_for_speech(self, audio_chunk, sampling_rate=16000):
         """
         Processes a 32ms (512 samples) chunk of microphone audio.
         `audio_chunk` should be a numpy array of floats.
         """
-        if model is None:  # VAD not loaded
+        if self._model is None:  # VAD not loaded
             return False
 
         # Ensure audio_chunk is float32 and 16000Hz expected by Silero VAD
@@ -63,7 +130,7 @@ class InterruptionHandler:
 
     def reset(self):
         self.is_interrupted = False
-        if model is not None:
+        if self._model is not None:
             self.vad_iterator.reset_states()
 
 
