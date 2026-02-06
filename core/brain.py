@@ -49,8 +49,8 @@ class VoiceAgentBrain:
         self.llm = None
         if mode == "creative":
             try:
-                from langchain_community.llms import Ollama
-                self.llm = Ollama(model=model_name)
+                from langchain_ollama import OllamaLLM
+                self.llm = OllamaLLM(model=model_name)
                 print(f"ℹ️  Brain initialized for creative mode with {model_name}")
             except Exception as e:
                 print(f"⚠️  Failed to initialize Ollama: {e}")

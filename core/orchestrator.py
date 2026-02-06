@@ -107,9 +107,9 @@ class LocalVoiceOrchestrator:
 
         print(f"\n📦 Loading Ollama ({self.llm_model}) for creative mode...")
         try:
-            from langchain_community.llms import Ollama
+            from langchain_ollama import OllamaLLM
             # Test if Ollama is accessible
-            test_llm = Ollama(model=self.llm_model)
+            test_llm = OllamaLLM(model=self.llm_model)
             # Simple test to see if it responds
             test_llm.invoke("Hi")
             self.ollama_brain = test_llm
@@ -316,8 +316,8 @@ class LocalVoiceOrchestrator:
         try:
             # Step 1: Generate creative response with Ollama
             print(f"   🧠 Generating response with {self.llm_model}...")
-            from langchain_community.llms import Ollama
-            llm = Ollama(model=self.llm_model)
+            from langchain_ollama import OllamaLLM
+            llm = OllamaLLM(model=self.llm_model)
             response_text = llm.invoke(text)
             print(f"   LLM response: {response_text[:100]}{'...' if len(response_text) > 100 else ''}")
 

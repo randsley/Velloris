@@ -211,7 +211,8 @@ class TestIntegration:
 
         # Test routing without actually generating audio (to avoid dependency issues)
         # Just check that routing doesn't crash
-        result = orchestrator.route_request("Hello", mode="interactive")
+        # Note: Use keyword arguments since mode is the first parameter
+        result = orchestrator.route_request(mode="dubbing", text="Hello")
         # Result may be None if TTS not available
         assert result is None or isinstance(result, tuple)
 
