@@ -1,11 +1,12 @@
 """
 Velloris: A Local-First, High-Fidelity Voice Agent Engine
 
-Main entry point for the dual-engine voice agent system.
+Main entry point for the three-mode voice agent system.
 
 Usage:
-    python main.py --mode interactive
+    python main.py --mode realtime
     python main.py --mode dubbing --script "Your script here"
+    python main.py --mode creative --emotion "Speak with excitement"
 """
 
 import asyncio
@@ -45,14 +46,6 @@ class VellorisApplication:
         self.args = args
         self.running = True
 
-        # Handle deprecated 'interactive' mode
-        if args.mode == "interactive":
-            print("⚠️  WARNING: 'interactive' mode is deprecated!")
-            print("   Use '--mode realtime' for PersonaPlex S2S (faster, full-duplex)")
-            print("   Or '--mode creative' for Ollama + Qwen3-TTS (flexible, emotional)")
-            print("   Defaulting to 'creative' mode...\n")
-            args.mode = "creative"
-
         # Initialize components based on mode
         self.orchestrator = LocalVoiceOrchestrator(
             device=args.device, llm_model=args.llm_model
@@ -68,7 +61,7 @@ class VellorisApplication:
         else:
             self.brain = None  # Not needed for realtime or dubbing
 
-        # Audio controller only for realtime mode (in future)
+        # Audio controller for realtime mode
         if args.mode == "realtime":
             self.interruption_handler = InterruptionHandler(threshold=Config.vad.THRESHOLD)
             self.audio_controller = IntegratedAudioController(
@@ -93,19 +86,19 @@ class VellorisApplication:
         self.running = False
         if hasattr(self, "orchestrator"):
             self.orchestrator.unload_engines()
-        if hasattr(self, "audio_controller"):
+        if hasattr(self, "audio_controller") and self.audio_controller:
             self.audio_controller.stop_transcription_worker()
         print("✓ Cleanup complete")
 
-    async def run_interactive(self):
+    async def run_realtime(self):
         """
-        Run Velloris in interactive mode.
+        Run Velloris in realtime mode.
 
-        Real-time voice conversation with the agent.
+        Real-time voice conversation with the agent using PersonaPlex S2S.
         User can interrupt the agent at any time.
         """
         print("\n" + "=" * 60)
-        print("🎤 VELLORIS - INTERACTIVE MODE")
+        print("🎤 VELLORIS - REALTIME MODE")
         print("=" * 60)
         print("Starting voice agent in real-time mode...")
         print("The agent will listen and respond to your voice.")
@@ -114,20 +107,20 @@ class VellorisApplication:
         try:
             # For now, show a demo with text input (since audio setup is complex)
             # In production, this would use the audio_controller.start_session()
-            await self._demo_interactive_mode()
+            await self._demo_realtime_mode()
 
         except KeyboardInterrupt:
             print("\n\nInterrupted by user")
         except Exception as e:
-            print(f"\n✗ Error in interactive mode: {e}")
+            print(f"\n✗ Error in realtime mode: {e}")
             import traceback
             traceback.print_exc()
         finally:
             self.cleanup()
 
-    async def _demo_interactive_mode(self):
+    async def _demo_realtime_mode(self):
         """
-        Demo interactive mode with text input.
+        Demo realtime mode with text input.
 
         In a real implementation, this would use:
         - self.audio_controller.start_session()
@@ -164,7 +157,8 @@ class VellorisApplication:
                     play_audio(audio_response, samplerate=24000)
 
                 # Reset interruption status for next turn
-                self.interruption_handler.reset()
+                if self.interruption_handler:
+                    self.interruption_handler.reset()
 
             except EOFError:
                 # Ctrl+D pressed
@@ -172,6 +166,30 @@ class VellorisApplication:
                 break
             except Exception as e:
                 print(f"Error processing input: {e}")
+
+    async def run_creative(self):
+        """
+        Run Velloris in creative mode.
+
+        LLM-powered emotional synthesis using Ollama + Qwen3-TTS.
+        """
+        print("\n" + "=" * 60)
+        print("🎨 VELLORIS - CREATIVE MODE")
+        print("=" * 60)
+        print("Starting voice agent in creative mode...")
+        print("Type your prompts and get emotional voice responses.")
+        print("Press Ctrl+C to exit.\n")
+
+        try:
+            await self._demo_realtime_mode()  # Reuse the demo loop
+        except KeyboardInterrupt:
+            print("\n\nInterrupted by user")
+        except Exception as e:
+            print(f"\n✗ Error in creative mode: {e}")
+            import traceback
+            traceback.print_exc()
+        finally:
+            self.cleanup()
 
     async def run_dubbing(self):
         """
@@ -206,7 +224,7 @@ class VellorisApplication:
         try:
             # Process with orchestrator in dubbing mode
             print("Generating high-fidelity audio...")
-            result = self.orchestrator.route_request(script, mode="dubbing", ref_audio_path=voice_ref)
+            result = self.orchestrator.route_request(mode="dubbing", text=script, ref_audio_path=voice_ref)
 
             if result:
                 audio, sr = result
@@ -232,13 +250,15 @@ class VellorisApplication:
         print(f"   Device: {self.args.device}")
         print(f"   LLM: {self.args.llm_model}")
 
-        # Show platform info if verbose
+        # Show platform info
         from utils.device_utils import get_platform_info
         platform_info = get_platform_info()
         print(f"   Platform: {platform_info['os']} ({platform_info['machine']})")
 
-        if self.args.mode == "interactive":
-            await self.run_interactive()
+        if self.args.mode == "realtime":
+            await self.run_realtime()
+        elif self.args.mode == "creative":
+            await self.run_creative()
         elif self.args.mode == "dubbing":
             await self.run_dubbing()
         else:
@@ -252,8 +272,11 @@ def main():
         formatter_class=argparse.RawDescriptionHelpFormatter,
         epilog="""
 Examples:
-  # Interactive mode (real-time voice conversation)
-  python main.py --mode interactive
+  # Realtime mode (PersonaPlex S2S, ultra-low latency)
+  python main.py --mode realtime
+
+  # Creative mode (Ollama + Qwen3-TTS, emotional synthesis)
+  python main.py --mode creative --emotion "Speak with excitement"
 
   # Dubbing mode (high-fidelity speech generation)
   python main.py --mode dubbing --script "Your script here"
@@ -261,8 +284,8 @@ Examples:
   # With custom voice reference
   python main.py --mode dubbing --script "Story" --voice-ref voices/my_voice.wav
 
-  # With CPU device
-  python main.py --mode interactive --device cpu
+  # With specific device
+  python main.py --mode realtime --device cuda
 
 For full documentation, see README.md
         """,
@@ -273,12 +296,11 @@ For full documentation, see README.md
         "--mode",
         type=str,
         default=Config.app.DEFAULT_MODE,
-        choices=Config.app.MODES + ["interactive"],  # Include 'interactive' for backward compatibility
+        choices=Config.app.MODES,
         help="""Operating mode:
         - realtime: PersonaPlex end-to-end S2S (ultra-low latency, full-duplex)
         - dubbing: Qwen3-TTS high-fidelity narration (multilingual, professional quality)
         - creative: Ollama + Qwen3-TTS (emotional synthesis, storytelling)
-        - interactive: DEPRECATED (use 'realtime' or 'creative')
         """,
     )
 
@@ -297,14 +319,6 @@ For full documentation, see README.md
         type=str,
         default=Config.model.OLLAMA_MODEL,
         help="Ollama model name (only used in creative mode, requires 'ollama serve')",
-    )
-
-    parser.add_argument(
-        "--whisper-model",
-        type=str,
-        default=Config.model.WHISPER_MODEL,
-        choices=["tiny", "base", "small", "medium", "large"],
-        help="Whisper STT model size (deprecated, not used in new architecture)",
     )
 
     # Real-time mode arguments (PersonaPlex)

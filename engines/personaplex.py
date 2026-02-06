@@ -142,40 +142,6 @@ class PersonaPlexEngine:
             print("  5. Set token: export HF_TOKEN=<your_token>")
             self.model = None
 
-    def transcribe_audio(self, audio: np.ndarray, sr: int = 24000) -> str:
-        """
-        DEPRECATED: Do not use PersonaPlex for transcription only!
-
-        PersonaPlex-7B is a full end-to-end Speech-to-Speech model.
-        Using it for transcription only wastes 95% of its capabilities.
-
-        For transcription-only tasks, use Whisper or another dedicated STT model.
-        For conversations, use process_voice_turn() or generate_s2s_response() instead.
-
-        Args:
-            audio: Audio samples as numpy array (24kHz for PersonaPlex)
-            sr: Sample rate
-
-        Returns:
-            Empty string (deprecated functionality)
-        """
-        import warnings
-        warnings.warn(
-            "PersonaPlex.transcribe_audio() is deprecated. "
-            "PersonaPlex is designed for end-to-end S2S conversations. "
-            "Use process_voice_turn() for full S2S or Whisper for transcription-only.",
-            DeprecationWarning,
-            stacklevel=2
-        )
-
-        if self.model is None:
-            print("[STUB MODE] PersonaPlex-7B not loaded")
-            return ""
-
-        print("⚠️  WARNING: Using PersonaPlex for transcription only is inefficient!")
-        print("   PersonaPlex is a full S2S model. Use process_voice_turn() instead.")
-        return ""
-
     def process_speech(
         self,
         audio: np.ndarray,

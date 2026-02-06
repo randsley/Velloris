@@ -79,7 +79,7 @@ class LocalVoiceOrchestrator:
         if self.personaplex_engine is not None:
             return
 
-        print("\n📦 Loading PersonaPlex engine for interactive mode...")
+        print("\n📦 Loading PersonaPlex engine for realtime mode...")
         try:
             self.personaplex_engine = PersonaPlexEngine(
                 device=self.device, llm_model=self.llm_model
@@ -199,15 +199,6 @@ class LocalVoiceOrchestrator:
             return self._handle_dubbing(text, ref_audio_path)
 
         elif mode == "creative":
-            if text is None:
-                print("❌ creative mode requires text")
-                return None
-            return self._handle_creative(text, emotion, ref_audio_path)
-
-        # Backward compatibility with old "interactive" mode name
-        elif mode == "interactive":
-            print("⚠️  'interactive' mode is deprecated. Use 'realtime' or 'creative' instead.")
-            print("   Defaulting to 'creative' mode...")
             if text is None:
                 print("❌ creative mode requires text")
                 return None
@@ -403,20 +394,20 @@ if __name__ == "__main__":
     # Test the orchestrator
     orchestrator = LocalVoiceOrchestrator(device="cpu", llm_model="llama3")
 
-    # Test interactive mode
-    print("\n" + "=" * 50)
-    print("Test 1: Interactive Mode")
-    print("=" * 50)
-    result = orchestrator.route_request(
-        "Hello, how are you today?", mode="interactive"
-    )
-
     # Test dubbing mode
     print("\n" + "=" * 50)
-    print("Test 2: Dubbing Mode")
+    print("Test 1: Dubbing Mode")
     print("=" * 50)
     script = "Once upon a time in a digital landscape, models lived in harmony."
-    result = orchestrator.route_request(script, mode="dubbing")
+    result = orchestrator.route_request(mode="dubbing", text=script)
+
+    # Test creative mode
+    print("\n" + "=" * 50)
+    print("Test 2: Creative Mode")
+    print("=" * 50)
+    result = orchestrator.route_request(
+        mode="creative", text="Hello, how are you today?"
+    )
 
     # Cleanup
     orchestrator.unload_engines()

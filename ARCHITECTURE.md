@@ -94,7 +94,7 @@ persona = "A helpful AI assistant with a friendly tone"
 
 result = orchestrator.route_request(
     text=persona,
-    mode="interactive",
+    mode="realtime",
     audio_input=audio
 )
 ```
@@ -133,7 +133,7 @@ result = orchestrator.route_request(
 
 ## Engine Specifications
 
-### PersonaPlex-7B (Interactive)
+### PersonaPlex-7B (Real-Time)
 
 **Model:** `nvidia/personaplex-7b-v1` (Hugging Face)
 
@@ -208,7 +208,7 @@ pip install flash-attn --no-build-isolation
 
 ## Data Flow
 
-### Interactive Conversation Flow
+### Real-Time Conversation Flow
 
 ```
 User Audio (24kHz)
@@ -256,8 +256,8 @@ Models are loaded only when first used:
 ```python
 orchestrator = LocalVoiceOrchestrator()
 
-# PersonaPlex-7B loaded on first interactive mode call
-result = orchestrator.route_request(text, mode="interactive")
+# PersonaPlex-7B loaded on first realtime mode call
+result = orchestrator.route_request(mode="realtime", audio_input=audio)
 
 # Qwen3-TTS loaded on first dubbing mode call
 result = orchestrator.route_request(text, mode="dubbing")
@@ -296,7 +296,7 @@ AudioConfig:
 ModelConfig:
   - STT: Whisper base
   - LLM: llama3 (via Ollama)
-  - Interactive: PersonaPlex-7B
+  - Real-Time: PersonaPlex-7B
   - Dubbing: Qwen3-TTS 1.7B-CustomVoice
 
 VADConfig:
@@ -323,7 +323,7 @@ Velloris operates entirely locally with no cloud dependencies:
 
 ## Performance Characteristics
 
-### PersonaPlex-7B (Interactive)
+### PersonaPlex-7B (Real-Time)
 
 | Metric | Value | Notes |
 |--------|-------|-------|
@@ -443,8 +443,8 @@ All components tested in stub mode (no models required):
 # Run test suite (17 tests)
 pytest tests/test_pipeline.py -v
 
-# Interactive mode test
-python main.py --mode interactive --device cpu
+# Real-time mode test
+python main.py --mode realtime --device cpu
 
 # Dubbing mode test
 python main.py --mode dubbing --script "Test text"

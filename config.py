@@ -105,10 +105,6 @@ class ApplicationConfig:
     DUBBING_CHUNK_SIZE = 256  # Process script in chunks
     DUBBING_TIMEOUT = 60.0  # Timeout for TTS generation
 
-    # Backward compatibility (deprecated)
-    INTERACTIVE_TIMEOUT = 30.0  # DEPRECATED: Use REALTIME_TIMEOUT or CREATIVE_TIMEOUT
-    RESPONSE_TIMEOUT = 120.0  # DEPRECATED: Use CREATIVE_TIMEOUT
-
     # Logging
     LOG_LEVEL = os.getenv("LOG_LEVEL", "INFO")
     LOG_FILE = None  # None = stdout only

@@ -15,18 +15,6 @@ Velloris is a state-of-the-art framework for creating lifelike, interactive AI a
 
 ---
 
-## 🔄 **IMPORTANT: Migration Notice**
-
-**Velloris v2.0** introduces a new three-mode architecture with significantly improved performance!
-
-**If you were using `--mode interactive`:**
-- ✅ **Use `--mode realtime`** for faster, full-duplex conversations (no Ollama needed!)
-- ✅ **Use `--mode creative`** for LLM-powered emotional content (similar to old behavior)
-
-Old commands still work with deprecation warnings. See [MIGRATION.md](MIGRATION.md) for details.
-
----
-
 ## ⚡ Quick Start
 
 ### Prerequisites
@@ -253,7 +241,7 @@ Displays:
 
 ## 🏗️ Architecture
 
-### Real-Time Mode Pipeline (NEW!)
+### Real-Time Mode Pipeline
 
 ```
 User Speech (24kHz)
@@ -353,7 +341,6 @@ pytest tests/test_pipeline.py --cov=. -v
 ## 📚 Documentation
 
 - **[ARCHITECTURE.md](ARCHITECTURE.md)** - Full system architecture, platform support, performance metrics
-- **[CLAUDE.md](CLAUDE.md)** - Development guidelines for contributors
 - **[LICENSE](LICENSE)** - Apache License 2.0
 
 ---
@@ -372,7 +359,7 @@ pytest tests/test_pipeline.py --cov=. -v
 
 ### PersonaPlex Warning
 - This is informational if you're only using Dubbing Mode
-- Only needed for Interactive Mode with real-time speech
+- Only needed for Real-Time Mode with live speech
 
 ### Slow Inference
 - **MPS/Metal**: Expected to be slower than CUDA
@@ -401,7 +388,7 @@ Apache License 2.0 - See [LICENSE](LICENSE) file
 
 ## 🤝 Contributing
 
-Contributions welcome! See [CLAUDE.md](CLAUDE.md) for guidelines.
+Contributions welcome! Please open an issue or pull request on GitHub.
 
 ---
 

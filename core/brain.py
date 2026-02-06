@@ -161,61 +161,6 @@ class VoiceAgentBrain:
             print(f"❌ Streaming error: {e}")
             yield ""
 
-    async def process_audio_turn(
-        self, audio: np.ndarray, sr: int = 16000, ref_audio_path: Optional[str] = None
-    ) -> Tuple[str, Optional[np.ndarray]]:
-        """
-        DEPRECATED: Use orchestrator.route_request() instead.
-
-        For realtime mode: Use PersonaPlex end-to-end S2S directly
-        For creative mode: This method can still be used, but orchestrator is preferred
-
-        Args:
-            audio: Audio samples
-            sr: Sample rate
-            ref_audio_path: Optional reference for voice cloning
-
-        Returns:
-            Tuple of (response_text, audio_response)
-        """
-        import warnings
-        warnings.warn(
-            "VoiceAgentBrain.process_audio_turn() is deprecated. "
-            "Use orchestrator.route_request() with mode='realtime' or 'creative' instead.",
-            DeprecationWarning,
-            stacklevel=2
-        )
-
-        if self.orchestrator is None:
-            print("❌ No orchestrator available for audio processing")
-            return "", None
-
-        if self.mode == "realtime":
-            print("⚠️  For realtime mode, use orchestrator.route_request(mode='realtime', audio_input=...)")
-            print("   This bypasses unnecessary transcription and uses PersonaPlex S2S directly.")
-            # Use orchestrator's realtime mode
-            result = self.orchestrator.route_request(
-                mode="realtime",
-                audio_input=audio
-            )
-            if result:
-                audio_out, sr_out = result
-                return "[PersonaPlex S2S Response]", audio_out
-            return "", None
-
-        # For creative mode, we need transcription first
-        print("⚠️  Using deprecated transcription path. Consider using Whisper for STT.")
-        user_text = self.orchestrator.personaplex_engine.transcribe_audio(audio, sr)
-        print(f"Transcribed: {user_text}")
-
-        if not user_text:
-            return "", None
-
-        # Process the transcribed text
-        response_text, audio_response = await self.process_voice_turn(user_text)
-
-        return response_text, audio_response
-
     def interrupt(self):
         """Signal the brain to stop processing (for barge-in support)."""
         if self.tts_engine is not None:
