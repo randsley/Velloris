@@ -6,7 +6,7 @@ This document outlines the planned features and improvements for Velloris.
 
 ## Current Version: v2.0.0
 
-**Released:** February 2024
+**Released:** February 2026
 
 **Major Features:**
 - ✅ Three-mode architecture (realtime, dubbing, creative)
@@ -20,28 +20,25 @@ See [CHANGELOG.md](CHANGELOG.md) for full release notes.
 
 ---
 
-## Near-Term (v2.1 - Q1 2024)
+## Near-Term (v2.1 - Q1 2026)
 
 ### Performance Optimizations
 
 **Priority: High**
 
 - [ ] **Model quantization support**
-  - 8-bit and 4-bit quantization for PersonaPlex-7B
-  - Reduce VRAM requirements from 16GB to 8GB
-  - Minor latency increase acceptable for broader accessibility
+  - **Goal:** 8-bit and 4-bit quantization for PersonaPlex-7B.
+  - **Outcome:** Reduce VRAM requirements from 16GB to 8GB with a latency increase of no more than 10%.
 
 - [ ] **Streaming TTS in dubbing mode**
-  - Generate audio progressively instead of waiting for full synthesis
-  - Reduce perceived latency for long scripts
-  - Enable real-time playback during generation
+  - **Goal:** Generate audio progressively instead of waiting for full synthesis.
+  - **Outcome:** Reduce perceived latency for long scripts by 50% and enable real-time playback during generation.
 
 - [ ] **Batch processing optimization**
-  - Parallel processing for multiple scripts
-  - Smart batching to maximize GPU utilization
-  - Progress tracking and cancellation support
+  - **Goal:** Parallel processing for multiple scripts.
+  - **Outcome:** Smart batching to maximize GPU utilization, with progress tracking and cancellation support.
 
-**Target:** v2.1.0 release by March 2024
+**Target:** v2.1.0 release by April 2026
 
 ---
 
@@ -50,43 +47,37 @@ See [CHANGELOG.md](CHANGELOG.md) for full release notes.
 **Priority: Medium**
 
 - [ ] **Audio post-processing pipeline**
-  - Noise reduction
-  - Normalization
-  - Compression (broadcast-quality)
-  - EQ adjustment
+  - **Goal:** Implement a post-processing pipeline with noise reduction, normalization, compression, and EQ adjustment.
+  - **Outcome:** Achieve broadcast-quality audio output.
 
 - [ ] **Voice mixing and effects**
-  - Reverb, echo, chorus
-  - Pitch shifting
-  - Speed adjustment
-  - Background music mixing
+  - **Goal:** Add support for voice mixing and effects like reverb, echo, chorus, pitch shifting, speed adjustment, and background music mixing.
+  - **Outcome:** Users can create more dynamic and engaging audio content.
 
 - [ ] **Multi-speaker support**
-  - Detect speaker changes in script
-  - Automatically assign different voices
-  - Maintain speaker consistency
+  - **Goal:** Detect speaker changes in script and automatically assign different voices.
+  - **Outcome:** Maintain speaker consistency in multi-speaker scripts.
 
-**Target:** v2.1.1 release by April 2024
+**Target:** v2.1.1 release by May 2026
 
 ---
 
-## Mid-Term (v2.2-v2.3 - Q2 2024)
+## Mid-Term (v2.2-v2.3 - Q2-Q3 2026)
 
 ### Language Expansion
 
 **Priority: High**
 
 - [ ] **Enhanced multilingual support**
-  - Improve quality for non-English languages
-  - Add language-specific voice models
-  - Support code-switching (mixing languages)
+  - **Goal:** Improve quality for non-English languages, with a focus on French, German, and Spanish.
+  - **Outcome:** Achieve human-level quality for the target languages.
+  - **Dependencies:** Language-specific voice models.
 
 - [ ] **Dialect support**
-  - Regional accents (US, UK, Australian English)
-  - Cultural pronunciation nuances
-  - User-selectable dialect variants
+  - **Goal:** Add support for regional accents and cultural pronunciation nuances.
+  - **Outcome:** User-selectable dialect variants for English (US, UK, Australian), Spanish (Spain, Mexico), and French (France, Canada).
 
-**Target:** v2.2.0 release by May 2024
+**Target:** v2.2.0 release by July 2026
 
 ---
 
@@ -95,23 +86,18 @@ See [CHANGELOG.md](CHANGELOG.md) for full release notes.
 **Priority: High**
 
 - [ ] **RESTful API server**
-  - HTTP endpoints for all three modes
-  - Authentication and rate limiting
-  - WebSocket support for streaming
-  - Swagger/OpenAPI documentation
+  - **Goal:** Implement a RESTful API server with endpoints for all three modes.
+  - **Outcome:** Enable easy integration with other applications and services.
 
 - [ ] **Python SDK improvements**
-  - Type hints and better IDE support
-  - Async/await support
-  - Context managers for resource cleanup
-  - Better error messages
+  - **Goal:** Improve the Python SDK with type hints, async/await support, context managers, and better error messages.
+  - **Outcome:** A more developer-friendly and robust SDK.
 
 - [ ] **Streaming API**
-  - Server-Sent Events (SSE) for progressive audio
-  - WebSocket for bidirectional communication
-  - Chunked transfer encoding
+  - **Goal:** Implement a streaming API using Server-Sent Events (SSE) and WebSockets.
+  - **Outcome:** Enable real-time, low-latency audio streaming.
 
-**Target:** v2.2.1 release by June 2024
+**Target:** v2.2.1 release by August 2026
 
 ---
 
@@ -120,48 +106,41 @@ See [CHANGELOG.md](CHANGELOG.md) for full release notes.
 **Priority: Medium**
 
 - [ ] **Docker container**
-  - Official Docker image
-  - Docker Compose for easy deployment
-  - NVIDIA Docker support for GPU acceleration
-  - Multi-architecture support (AMD64, ARM64)
+  - **Goal:** Provide an official Docker image with multi-architecture support (AMD64, ARM64).
+  - **Outcome:** Simplify deployment and ensure consistency across different environments.
 
 - [ ] **Cloud deployment guides**
-  - AWS EC2/SageMaker
-  - Google Cloud Platform
-  - Azure ML
-  - RunPod, Vast.ai, Lambda Labs
+  - **Goal:** Create deployment guides for popular cloud platforms (AWS, GCP, Azure) and services (RunPod, Vast.ai, Lambda Labs).
+  - **Outcome:** Lower the barrier to entry for cloud-based deployments.
 
 - [ ] **Mobile support (experimental)**
-  - iOS app with on-device inference
-  - Android app with on-device inference
-  - Requires model optimization (see v2.1)
+  - **Goal:** Develop experimental iOS and Android apps with on-device inference.
+  - **Outcome:** Showcase the potential of Velloris on mobile devices.
+  - **Dependencies:** Model quantization support (v2.1).
 
-**Target:** v2.3.0 release by June 2024
+**Target:** v2.3.0 release by September 2026
 
 ---
 
-## Long-Term (v3.0+ - Q3-Q4 2024)
+## Long-Term (v3.0+ - Q4 2026 and beyond)
 
 ### Advanced Features
 
 **Priority: Medium**
 
 - [ ] **Emotion detection and matching**
-  - Detect emotion from user voice (realtime mode)
-  - Generate response with matching emotion
-  - Configurable emotion mapping rules
+  - **Goal:** Detect emotion from user voice in realtime mode and generate a response with matching emotion.
+  - **Outcome:** More natural and engaging conversations.
 
 - [ ] **Voice conversion**
-  - Real-time voice conversion (change your voice)
-  - Cross-gender voice conversion
-  - Age progression/regression
+  - **Goal:** Implement real-time voice conversion, including cross-gender and age progression/regression.
+  - **Outcome:** A powerful tool for content creators and privacy-conscious users.
 
 - [ ] **Speech-to-speech translation**
-  - Translate speech while preserving voice characteristics
-  - Multi-language conversation mode
-  - Cultural adaptation (idioms, references)
+  - **Goal:** Translate speech while preserving voice characteristics in a multi-language conversation mode.
+  - **Outcome:** Break down language barriers in real-time communication.
 
-**Target:** v3.0.0 release by September 2024
+**Target:** v3.0.0 release by Q4 2026
 
 ---
 
@@ -170,21 +149,18 @@ See [CHANGELOG.md](CHANGELOG.md) for full release notes.
 **Priority: High**
 
 - [ ] **Fine-tuning support**
-  - PersonaPlex-7B fine-tuning for custom voices
-  - Qwen3-TTS fine-tuning for specialized domains
-  - LoRA adapters for efficient customization
+  - **Goal:** Add support for fine-tuning PersonaPlex-7B and Qwen3-TTS for custom voices and specialized domains.
+  - **Outcome:** Users can create their own high-quality custom voices.
 
 - [ ] **Custom model support**
-  - Plugin system for third-party models
-  - Adapter interface for new TTS engines
-  - Bring-your-own-LLM support
+  - **Goal:** Implement a plugin system for third-party models, including new TTS engines and LLMs.
+  - **Outcome:** A more flexible and extensible platform.
 
 - [ ] **Zero-shot voice cloning**
-  - Improve voice cloning with minimal reference audio
-  - Single-sentence voice cloning
-  - Voice style transfer
+  - **Goal:** Improve voice cloning with minimal reference audio (e.g., a single sentence).
+  - **Outcome:** Make voice cloning more accessible and easier to use.
 
-**Target:** v3.1.0 release by November 2024
+**Target:** v3.1.0 release by Q1 2027
 
 ---
 
@@ -193,21 +169,10 @@ See [CHANGELOG.md](CHANGELOG.md) for full release notes.
 **Priority: Low (community-driven)**
 
 - [ ] **Multi-tenancy support**
-  - User authentication and authorization
-  - Resource isolation and quotas
-  - Audit logging
-
 - [ ] **Monitoring and observability**
-  - Prometheus metrics
-  - Grafana dashboards
-  - Distributed tracing (Jaeger)
-
 - [ ] **High availability**
-  - Load balancing
-  - Model caching and sharing
-  - Failover and redundancy
 
-**Target:** v3.2.0 release by December 2024
+**Target:** v3.2.0 release by Q2 2027
 
 ---
 
@@ -218,80 +183,32 @@ See [CHANGELOG.md](CHANGELOG.md) for full release notes.
 These features are under investigation and may or may not be implemented:
 
 ### Advanced Reasoning
-
 - [ ] **Chain-of-thought speech**
-  - Agent "thinks out loud" before responding
-  - Transparent reasoning process
-  - Configurable verbosity
-
 - [ ] **Multi-turn planning**
-  - Agent plans multi-turn conversations
-  - Proactive suggestions and questions
-  - Goal-oriented dialogue
 
 ### Audio Understanding
-
 - [ ] **Speaker diarization**
-  - Identify different speakers in audio
-  - Maintain per-speaker history
-  - Multi-party conversation support
-
 - [ ] **Acoustic scene analysis**
-  - Detect background environment (office, street, etc.)
-  - Adjust speaking style accordingly
-  - Noise-aware processing
 
 ### Multimodal Support
-
 - [ ] **Vision integration**
-  - Describe images while speaking
-  - Visual question answering with voice
-  - Screen sharing + voice assistant
-
 - [ ] **Text + audio input**
-  - Combine written text with voice commands
-  - Seamless mode switching
-  - Context preservation across modalities
 
 ---
 
 ## Community Requests
 
-Features requested by the community. Vote on [GitHub Discussions](https://github.com/randsley/Velloris/discussions).
+Features requested by the community. Vote on [GitHub Discussions](https://github.com/randsley/Velloris/discussions). The top 3 most upvoted features will be considered for the next release cycle.
 
 ### High Demand
-
 1. **Web UI / GUI** (150+ votes)
-   - Browser-based interface
-   - No installation required
-   - Real-time visualization
-
 2. **More voice options** (120+ votes)
-   - Celebrity voices (with permission)
-   - Historical figures
-   - Cartoon/game character voices
-
 3. **Voice editor** (100+ votes)
-   - Fine-tune pitch, speed, tone
-   - Visual waveform editor
-   - Real-time preview
 
 ### Medium Demand
-
 4. **Plugin system** (75+ votes)
-   - Community-developed extensions
-   - Easy installation and management
-   - Plugin marketplace
-
 5. **Mobile apps** (60+ votes)
-   - iOS and Android apps
-   - On-device processing
-   - Cloud fallback option
-
 6. **Video dubbing** (50+ votes)
-   - Replace audio track in videos
-   - Lip-sync correction
-   - Multi-language dubbing
 
 ---
 
@@ -300,21 +217,18 @@ Features requested by the community. Vote on [GitHub Discussions](https://github
 We welcome contributions to any feature on this roadmap!
 
 ### For Developers
-
 1. Check [open issues](https://github.com/randsley/Velloris/issues) labeled `help wanted`
 2. Comment on the issue to claim it
 3. Fork, implement, and submit a PR
 4. See [CONTRIBUTING.md](CONTRIBUTING.md) for guidelines
 
 ### For Researchers
-
 1. Open a discussion in [GitHub Discussions](https://github.com/randsley/Velloris/discussions)
 2. Share your research findings or ideas
 3. Collaborate on experimental features
 4. Co-author papers on Velloris innovations
 
 ### For Users
-
 1. Vote on features in [GitHub Discussions](https://github.com/randsley/Velloris/discussions)
 2. Share your use cases and requirements
 3. Test beta features and provide feedback
@@ -333,7 +247,7 @@ Velloris follows [Semantic Versioning](https://semver.org/):
 ### Release Cadence
 
 - **Major releases**: 6-12 months
-- **Minor releases**: 1-2 months
+- **Minor releases**: 1-3 months
 - **Patch releases**: As needed (critical bugs)
 
 ---
@@ -343,29 +257,10 @@ Velloris follows [Semantic Versioning](https://semver.org/):
 Features from the original v1.x roadmap that are now complete:
 
 - ✅ **Three-mode architecture** (v2.0.0)
-  - Realtime conversation mode
-  - Dubbing/narration mode
-  - Creative synthesis mode
-
 - ✅ **Proper PersonaPlex usage** (v2.0.0)
-  - End-to-end Speech-to-Speech
-  - 10-15x latency improvement
-  - Full-duplex support
-
 - ✅ **Optional Ollama** (v2.0.0)
-  - Only required for creative mode
-  - Realtime/dubbing work standalone
-
 - ✅ **Voice cloning** (v2.0.0)
-  - Reference audio support
-  - 3-5 second samples
-  - Dubbing and creative modes
-
 - ✅ **Comprehensive documentation** (v2.0.0)
-  - README, QUICKSTART, ARCHITECTURE
-  - MIGRATION, CONTRIBUTING, CHANGELOG
-  - FAQ, TROUBLESHOOTING, EXAMPLES
-  - This ROADMAP document
 
 ---
 
@@ -374,9 +269,6 @@ Features from the original v1.x roadmap that are now complete:
 Features from v1.x that are no longer supported:
 
 - ❌ **Interactive mode** (deprecated in v2.0)
-  - Replaced by realtime mode
-  - Misused PersonaPlex-7B
-  - Much slower than v2.0 realtime
 
 ---
 
@@ -384,8 +276,8 @@ Features from v1.x that are no longer supported:
 
 | Version | Release Date | Status | Highlights |
 |---------|--------------|--------|------------|
-| v2.0.0 | Feb 2024 | **Current** | Three-mode architecture, proper PersonaPlex usage |
-| v1.0.0 | Jan 2024 | Deprecated | Initial release, interactive mode |
+| v2.0.0 | Feb 2026 | **Current** | Three-mode architecture, proper PersonaPlex usage |
+| v1.0.0 | Jan 2026 | Deprecated | Initial release, interactive mode |
 
 ---
 
@@ -401,6 +293,6 @@ Your feedback shapes the future of Velloris!
 
 ---
 
-**Last updated:** February 2024
+**Last updated:** February 2026
 
 For the latest updates, see [CHANGELOG.md](CHANGELOG.md).
