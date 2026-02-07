@@ -1,3 +1,11 @@
-mlx
-mlx-audio
-mlx-lm
+-r requirements.txt
+
+# PyTorch for macOS (CPU/MPS)
+torch>=2.0.0
+torchvision>=0.15.0
+torchaudio>=2.0.0
+
+# Optional MLX for Apple Silicon
+mlx>=0.0.1
+mlx-lm==0.22.5
+mlx-vlm==0.0.5
