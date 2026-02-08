@@ -1,11 +1,27 @@
--r requirements.txt
+# Core Audio & VAD
+sounddevice>=0.4.6
+pyaudio>=0.2.13
+librosa>=0.10.0
+numpy>=1.24.0
+silero-vad
+
+# Model Engines
+# transformers is a dependency of mlx-audio, so no need to pin it here.
+accelerate>=0.25.0
+sentencepiece>=0.1.99
+einops>=0.7.0
+langchain-community>=0.0.10
+langchain>=0.1.0
+langchain-ollama>=1.0.0
+
+# TTS Engine for macOS (MLX-Audio)
+mlx-audio
+
+# STT Engine (Whisper)
+openai-whisper>=20230314
+ffmpeg-python>=0.2.0
 
 # PyTorch for macOS (CPU/MPS)
 torch>=2.0.0
 torchvision>=0.15.0
 torchaudio>=2.0.0
-
-# Optional MLX for Apple Silicon
-mlx>=0.0.1
-mlx-lm==0.22.5
-mlx-vlm==0.0.5

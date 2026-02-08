@@ -27,10 +27,16 @@ Manages engine lifecycle with lazy loading for memory efficiency.
 import numpy as np
 from typing import Optional, Tuple
 from pathlib import Path
+import sys
 
 from engines.personaplex import PersonaPlexEngine
-from engines.qwen_tts import Qwen3TTSEngine
 from utils.device_utils import get_optimal_device, get_platform_info
+
+# Conditional import for TTS engine based on platform
+if sys.platform == "darwin":
+    from engines.mlx_tts import MLXTTSEngine as TTSEngine
+else:
+    from engines.qwen_tts import Qwen3TTSEngine as TTSEngine
 
 
 class LocalVoiceOrchestrator:
@@ -39,8 +45,8 @@ class LocalVoiceOrchestrator:
 
     Modes:
     - realtime: PersonaPlex end-to-end S2S (no LLM needed)
-    - dubbing: Qwen3-TTS high-fidelity synthesis
-    - creative: Ollama + Qwen3-TTS (emotional content)
+    - dubbing: Qwen3-TTS/MLX-TTS high-fidelity synthesis
+    - creative: Ollama + Qwen3-TTS/MLX-TTS (emotional content)
 
     Features:
     - Lazy loading of models (only load when needed)
@@ -63,17 +69,19 @@ class LocalVoiceOrchestrator:
 
         # Engine instances (lazy-loaded)
         self.personaplex_engine: Optional[PersonaPlexEngine] = None
-        self.qwen3_engine: Optional[Qwen3TTSEngine] = None
+        self.tts_engine: Optional[TTSEngine] = None
         self.ollama_brain = None  # Lazy-loaded for creative mode
 
         print(f"[CFG] Orchestrator initialized on {self.device.upper()}")
         print(
             f"   Platform: {self.platform_info['os']} ({self.platform_info['machine']})"
         )
+        tts_backend = "MLX-Audio" if sys.platform == "darwin" else "Qwen3-TTS"
+        print(f"   TTS Backend: {tts_backend}")
         print("   Modes available:")
         print("     • realtime: PersonaPlex-7B (end-to-end S2S, no LLM)")
-        print("     • dubbing: Qwen3-TTS (high-fidelity narration)")
-        print(f"     • creative: {self.llm_model} + Qwen3-TTS (emotional synthesis)")
+        print(f"     • dubbing: {tts_backend} (high-fidelity narration)")
+        print(f"     • creative: {self.llm_model} + {tts_backend} (emotional synthesis)")
 
     def _load_personaplex(self):
         """Lazy-load PersonaPlex engine if not already loaded."""
@@ -89,17 +97,18 @@ class LocalVoiceOrchestrator:
         except Exception as e:
             print(f"[X] Failed to load PersonaPlex: {e}")
 
-    def _load_qwen3(self):
-        """Lazy-load Qwen3-TTS engine if not already loaded."""
-        if self.qwen3_engine is not None:
+    def _load_tts_engine(self):
+        """Lazy-load the appropriate TTS engine for the platform."""
+        if self.tts_engine is not None:
             return
 
-        print("\n[LOAD] Loading Qwen3-TTS engine...")
+        tts_backend = "MLX-Audio" if sys.platform == "darwin" else "Qwen3-TTS"
+        print(f"\n[LOAD] Loading {tts_backend} engine...")
         try:
-            self.qwen3_engine = Qwen3TTSEngine(device=self.device)
-            print("[OK] Qwen3-TTS ready")
+            self.tts_engine = TTSEngine(device=self.device)
+            print(f"[OK] {tts_backend} ready")
         except Exception as e:
-            print(f"[X] Failed to load Qwen3-TTS: {e}")
+            print(f"[X] Failed to load {tts_backend}: {e}")
 
     def _load_ollama(self):
         """Lazy-load Ollama brain for creative mode."""
@@ -128,9 +137,9 @@ class LocalVoiceOrchestrator:
             self.personaplex_engine.unload()
             self.personaplex_engine = None
 
-        if self.qwen3_engine is not None:
-            self.qwen3_engine.unload()
-            self.qwen3_engine = None
+        if self.tts_engine is not None:
+            self.tts_engine.unload()
+            self.tts_engine = None
 
         if self.ollama_brain is not None:
             self.ollama_brain = None
@@ -154,14 +163,14 @@ class LocalVoiceOrchestrator:
         Args:
             mode: Operating mode
                 - 'realtime': PersonaPlex end-to-end S2S (requires audio_input)
-                - 'dubbing': Qwen3-TTS high-fidelity narration (requires text)
-                - 'creative': Ollama + Qwen3-TTS emotional synthesis (requires text)
+                - 'dubbing': Qwen3-TTS/MLX-TTS high-fidelity narration (requires text)
+                - 'creative': Ollama + Qwen3-TTS/MLX-TTS emotional synthesis (requires text)
             text: Input text (for dubbing/creative modes)
             audio_input: User audio (for realtime mode)
             ref_audio_path: Optional reference audio for voice cloning
             voice_prompt: Voice file for PersonaPlex (e.g., "NATF2.pt")
             text_prompt: Persona/role description for PersonaPlex
-            emotion: Emotion instruction for Qwen3-TTS (creative mode)
+            emotion: Emotion instruction for TTS (creative mode)
 
         Returns:
             Tuple of (audio_array, sample_rate) or None
@@ -277,34 +286,35 @@ class LocalVoiceOrchestrator:
         ref_audio_path: Optional[str] = None,
     ) -> Optional[Tuple[np.ndarray, int]]:
         """
-        Handle creative mode: Ollama LLM + Qwen3-TTS emotional synthesis.
+        Handle creative mode: Ollama LLM + TTS emotional synthesis.
 
         Pipeline:
         1. User text → Ollama LLM (reasoning/creativity)
-        2. LLM response → Qwen3-TTS (emotional synthesis)
+        2. LLM response → TTS (emotional synthesis)
         3. Audio output
 
         Args:
             text: User input text
-            emotion: Emotion instruction for Qwen3-TTS
+            emotion: Emotion instruction for TTS
             ref_audio_path: Optional voice reference
 
         Returns:
             Tuple of (audio, sample_rate) or None
         """
         self._load_ollama()
-        self._load_qwen3()
+        self._load_tts_engine()
 
         if self.ollama_brain is None:
             print("[X] Ollama not available. Is ollama running?")
             print("   Start with: ollama serve")
             return None
 
-        if self.qwen3_engine is None:
-            print("[X] Qwen3-TTS engine not available")
+        if self.tts_engine is None:
+            print("[X] TTS engine not available")
             return None
 
-        print("\n🎯 [CREATIVE MODE] Ollama + Qwen3-TTS")
+        tts_backend = "MLX-Audio" if sys.platform == "darwin" else "Qwen3-TTS"
+        print(f"\n🎯 [CREATIVE MODE] Ollama + {tts_backend}")
         print(f"   Input: {text[:100]}{'...' if len(text) > 100 else ''}")
 
         try:
@@ -319,11 +329,11 @@ class LocalVoiceOrchestrator:
             )
 
             # Step 2: Synthesize with emotion control
-            print("   [MIC]  Synthesizing with Qwen3-TTS...")
+            print(f"   [MIC]  Synthesizing with {tts_backend}...")
             if emotion:
                 print(f"   Emotion: {emotion}")
 
-            result = self.qwen3_engine.generate_dubbing(
+            result = self.tts_engine.generate_dubbing(
                 text=response_text,
                 ref_audio_path=ref_audio_path,
                 language="english",
@@ -349,7 +359,7 @@ class LocalVoiceOrchestrator:
         self, text: str, ref_audio_path: Optional[str] = None
     ) -> Optional[Tuple[np.ndarray, int]]:
         """
-        Handle dubbing mode: Qwen3-TTS high-fidelity narration.
+        Handle dubbing mode: TTS high-fidelity narration.
 
         Direct text-to-speech synthesis without LLM.
         Best for: Audiobooks, podcasts, video narration, content creation.
@@ -361,13 +371,14 @@ class LocalVoiceOrchestrator:
         Returns:
             Tuple of (audio, sample_rate) or None
         """
-        self._load_qwen3()
+        self._load_tts_engine()
 
-        if self.qwen3_engine is None:
-            print("[X] Qwen3-TTS engine not available")
+        if self.tts_engine is None:
+            print("[X] TTS engine not available")
             return None
 
-        print("\n🎯 [DUBBING MODE] Qwen3-TTS High-Fidelity")
+        tts_backend = "MLX-Audio" if sys.platform == "darwin" else "Qwen3-TTS"
+        print(f"\n🎯 [DUBBING MODE] {tts_backend} High-Fidelity")
         print(f"   Script: {text[:100]}{'...' if len(text) > 100 else ''}")
 
         if ref_audio_path:
@@ -378,7 +389,7 @@ class LocalVoiceOrchestrator:
                 print("   [!]  Reference not found, using default voice")
 
         try:
-            result = self.qwen3_engine.generate_dubbing(
+            result = self.tts_engine.generate_dubbing(
                 text, ref_audio_path, language="english"
             )
 
