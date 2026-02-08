@@ -205,6 +205,7 @@ class TestIntegration:
         # Cleanup
         orchestrator.unload_engines()
 
+    @pytest.mark.filterwarnings("ignore:MLX-Audio is optimized for 'mps'")
     def test_orchestrator_routing(self):
         """Test orchestrator request routing."""
         orchestrator = LocalVoiceOrchestrator(device="cpu")
