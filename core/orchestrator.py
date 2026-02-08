@@ -81,7 +81,9 @@ class LocalVoiceOrchestrator:
         print("   Modes available:")
         print("     • realtime: PersonaPlex-7B (end-to-end S2S, no LLM)")
         print(f"     • dubbing: {tts_backend} (high-fidelity narration)")
-        print(f"     • creative: {self.llm_model} + {tts_backend} (emotional synthesis)")
+        print(
+            f"     • creative: {self.llm_model} + {tts_backend} (emotional synthesis)"
+        )
 
     def _load_personaplex(self):
         """Lazy-load PersonaPlex engine if not already loaded."""

@@ -9,19 +9,19 @@ Usage:
     python download_models.py --model tts  # Download only TTS model
     python download_models.py --list       # List available models
 """
-
-import argparse
-import os
 import sys
 from pathlib import Path
-
-# Ensure UTF-8 output on Windows
-if sys.platform == "win32":
-    sys.stdout.reconfigure(encoding="utf-8", errors="replace")
 
 # Add project root to path
 PROJECT_ROOT = Path(__file__).parent
 sys.path.insert(0, str(PROJECT_ROOT))
+
+import argparse
+import os
+
+# Ensure UTF-8 output on Windows
+if sys.platform == "win32":
+    sys.stdout.reconfigure(encoding="utf-8", errors="replace")
 
 # Import Config directly to avoid triggering utils/__init__.py
 from config import Config
@@ -230,7 +230,12 @@ def list_models():
     print("\n=== Velloris Model Status ===\n")
 
     models = [
-        ("qwen3-tts", "Qwen3-TTS-1.7B", "~3-5 GB", "Dubbing, Creative modes (non-macOS)"),
+        (
+            "qwen3-tts",
+            "Qwen3-TTS-1.7B",
+            "~3-5 GB",
+            "Dubbing, Creative modes (non-macOS)",
+        ),
         ("personaplex", "PersonaPlex-7B", "~14 GB", "Realtime mode"),
         ("silero-vad", "Silero VAD", "~2 MB", "Voice activity detection"),
         (
@@ -276,7 +281,16 @@ Examples:
     parser.add_argument(
         "--model",
         type=str,
-        choices=["all", "tts", "personaplex", "vad", "whisper", "mlx", "mlx-tts", "mlx-whisper"],
+        choices=[
+            "all",
+            "tts",
+            "personaplex",
+            "vad",
+            "whisper",
+            "mlx",
+            "mlx-tts",
+            "mlx-whisper",
+        ],
         default="all",
         help="Which model to download (default: all)",
     )

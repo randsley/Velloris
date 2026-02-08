@@ -31,7 +31,6 @@ def main():
         req_file = "requirements-win.txt"
     else:  # MacOS
         pip_path = os.path.join(venv_dir, "bin", "pip")
-        python_path = os.path.join(venv_dir, "bin", "python")
         req_file = "requirements-mac.txt"
 
     # 3. Upgrade Pip

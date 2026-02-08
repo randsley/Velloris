@@ -6,10 +6,8 @@ of Whisper on Apple's MLX framework.
 """
 
 import numpy as np
-from typing import Optional
 import warnings
 
-from config import Config
 from utils.device_utils import get_optimal_device
 
 try:
@@ -40,7 +38,9 @@ class MLXWhisperEngine:
         """
         self.device = get_optimal_device(device)
         if self.device != "mps":
-            warnings.warn(f"MLX-Audio is optimized for 'mps', but device is set to '{self.device}'.")
+            warnings.warn(
+                f"MLX-Audio is optimized for 'mps', but device is set to '{self.device}'."
+            )
 
         self.model_name = f"mlx-community/{model_name}"
 
@@ -74,10 +74,10 @@ class MLXWhisperEngine:
         except Exception as e:
             print(f"[X] Error during MLX-Whisper transcription: {e}")
             import traceback
+
             traceback.print_exc()
             return {"text": ""}
 
     def unload(self):
         """Unload model to free memory (MLX handles this automatically)."""
         print("[OK] MLX-Whisper engine unloaded (memory managed by MLX).")
-

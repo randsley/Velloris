@@ -19,10 +19,12 @@ from utils.vad_handler import InterruptionHandler
 # Conditionally import Whisper engine
 if sys.platform == "darwin":
     from engines.mlx_whisper import MLXWhisperEngine as WhisperEngine
+
     HAS_WHISPER = True
 else:
     try:
         import whisper
+
         WhisperEngine = whisper
         HAS_WHISPER = True
     except ImportError:
@@ -119,8 +121,11 @@ class IntegratedAudioController:
             print(f"Loading {stt_backend} ({whisper_model}) for STT...")
             try:
                 from config import Config
+
                 if sys.platform == "darwin":
-                    self.whisper_model = WhisperEngine(model_name=f"whisper-{whisper_model}")
+                    self.whisper_model = WhisperEngine(
+                        model_name=f"whisper-{whisper_model}"
+                    )
                 else:
                     local_path = Config.model.WHISPER_DIR
                     use_local = Config.model.is_model_downloaded("whisper")
@@ -135,7 +140,9 @@ class IntegratedAudioController:
                         print(f"  Expected path: {local_path}")
                         print("  Run: python download_models.py --model whisper")
                     else:
-                        self.whisper_model = WhisperEngine.load_model(whisper_model, device="cpu")
+                        self.whisper_model = WhisperEngine.load_model(
+                            whisper_model, device="cpu"
+                        )
 
                 if self.whisper_model:
                     print(f"[OK] {stt_backend} model loaded successfully")
@@ -288,7 +295,7 @@ class IntegratedAudioController:
                 dtype="int16",
                 device=input_device,
                 kind="input",
-            ) as input_stream, sd.Stream(
+            ), sd.Stream(
                 callback=self._output_callback,
                 channels=1,
                 samplerate=self.output_fs,
@@ -296,7 +303,7 @@ class IntegratedAudioController:
                 dtype="float32",
                 device=output_device,
                 kind="output",
-            ) as output_stream:
+            ):
                 print("Session Active. Speak to the Agent...")
                 while True:  # Keep session alive until explicitly stopped
                     await asyncio.sleep(0.1)  # Prevent busy-waiting

@@ -9,13 +9,10 @@ qwen-tts and other MLX-based libraries.
 Repo: https://github.com/Blaizzy/mlx-audio
 """
 
-import torch
 import numpy as np
-from pathlib import Path
 from typing import Optional, Tuple
 import warnings
 
-from config import Config
 from utils.device_utils import get_optimal_device
 
 try:
@@ -46,7 +43,9 @@ class MLXTTSEngine:
         """
         self.device = get_optimal_device(device)
         if self.device != "mps":
-            warnings.warn(f"MLX-Audio is optimized for 'mps', but device is set to '{self.device}'.")
+            warnings.warn(
+                f"MLX-Audio is optimized for 'mps', but device is set to '{self.device}'."
+            )
 
         self.model_name = f"mlx-community/{model_name}"
         self.sample_rate = 12000  # Qwen3-TTS native sample rate
@@ -104,17 +103,19 @@ class MLXTTSEngine:
                 audio = audio / np.max(np.abs(audio))
 
             duration = len(audio) / self.sample_rate
-            print(f"[OK] Generated {duration:.2f}s of audio at {self.sample_rate}Hz with MLX-Audio")
+            print(
+                f"[OK] Generated {duration:.2f}s of audio at {self.sample_rate}Hz with MLX-Audio"
+            )
 
             return audio, self.sample_rate
 
         except Exception as e:
             print(f"[X] Error during MLX-Audio generation: {e}")
             import traceback
+
             traceback.print_exc()
             return None
 
     def unload(self):
         """Unload model to free memory (MLX handles this automatically)."""
         print("[OK] MLX-Audio engine unloaded (memory managed by MLX).")
-

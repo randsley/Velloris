@@ -37,7 +37,7 @@ class TestOrchestrator:
 
         # Engines should be None initially
         assert orchestrator.personaplex_engine is None
-        assert orchestrator.qwen3_engine is None
+        assert orchestrator.tts_engine is None
 
         # Load PersonaPlex
         orchestrator._load_personaplex()
@@ -49,7 +49,7 @@ class TestOrchestrator:
         orchestrator = LocalVoiceOrchestrator(device="cpu")
         orchestrator.unload_engines()
         assert orchestrator.personaplex_engine is None
-        assert orchestrator.qwen3_engine is None
+        assert orchestrator.tts_engine is None
 
 
 class TestVADHandler:

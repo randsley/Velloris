@@ -20,8 +20,6 @@ Features:
   - Multilingual support (English, Mandarin, etc.)
 """
 
-
-
 import torch
 import numpy as np
 from pathlib import Path
@@ -42,13 +40,6 @@ try:
 except ImportError:
     HAS_QWEN3_TTS = False
     print("WARNING: qwen-tts not installed. Install with: pip install qwen-tts")
-
-try:
-    import soundfile as sf
-
-    HAS_SOUNDFILE = True
-except ImportError:
-    HAS_SOUNDFILE = False
 
 
 class Qwen3TTSEngine:
