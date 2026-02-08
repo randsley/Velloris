@@ -31,7 +31,7 @@ class MLXTTSEngine:
 
     def __init__(
         self,
-        model_name: str = "Qwen3-TTS-12Hz-1.7B-VoiceDesign-bf16",
+        model_name: str = "Qwen3-TTS-12Hz-1.7B-CustomVoice-bf16",
         device: str = "mps",
     ):
         """
@@ -95,7 +95,7 @@ class MLXTTSEngine:
                 text=text,
                 language=language,
                 instruction=instruct,
-                speaker=speaker,
+                voice=speaker,
                 ref_audio_path=ref_audio_path,
             ))
             

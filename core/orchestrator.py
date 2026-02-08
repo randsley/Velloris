@@ -337,7 +337,7 @@ class LocalVoiceOrchestrator:
                 text=response_text,
                 ref_audio_path=ref_audio_path,
                 language="english",
-                instruct=emotion or "",
+                speaker="serena",
             )
 
             if result:
@@ -356,7 +356,9 @@ class LocalVoiceOrchestrator:
             return None
 
     def _handle_dubbing(
-        self, text: str, ref_audio_path: Optional[str] = None
+        self,
+        text: str,
+        ref_audio_path: Optional[str] = None,
     ) -> Optional[Tuple[np.ndarray, int]]:
         """
         Handle dubbing mode: TTS high-fidelity narration.
@@ -390,7 +392,10 @@ class LocalVoiceOrchestrator:
 
         try:
             result = self.tts_engine.generate_dubbing(
-                text, ref_audio_path, language="english"
+                text=text,
+                ref_audio_path=ref_audio_path,
+                language="english",
+                speaker="serena",
             )
 
             if result:
