@@ -10,20 +10,26 @@ Handles audio input/output with:
 
 import asyncio
 import queue
+import sys
 import threading
 import sounddevice as sd
 import numpy as np
 from utils.vad_handler import InterruptionHandler
 
-try:
-    import whisper
-
+# Conditionally import Whisper engine
+if sys.platform == "darwin":
+    from engines.mlx_whisper import MLXWhisperEngine as WhisperEngine
     HAS_WHISPER = True
-except ImportError:
-    HAS_WHISPER = False
-    print(
-        "WARNING: openai-whisper not installed. Install with: pip install openai-whisper"
-    )
+else:
+    try:
+        import whisper
+        WhisperEngine = whisper
+        HAS_WHISPER = True
+    except ImportError:
+        HAS_WHISPER = False
+        print(
+            "WARNING: openai-whisper not installed. Install with: pip install openai-whisper"
+        )
 
 
 def play_audio(audio_data: np.ndarray, samplerate: int = 24000) -> None:
@@ -79,7 +85,7 @@ class IntegratedAudioController:
     Manages audio input/output with VAD detection and STT transcription.
 
     Features:
-    - Real-time speech-to-text with Whisper
+    - Real-time speech-to-text with Whisper or MLX-Whisper
     - Voice activity detection for interruption
     - Audio buffering and queue management
     - Transcription in background thread
@@ -109,31 +115,32 @@ class IntegratedAudioController:
         # Load Whisper model if available
         self.whisper_model = None
         if HAS_WHISPER:
-            print(f"Loading Whisper ({whisper_model}) for STT...")
+            stt_backend = "MLX-Whisper" if sys.platform == "darwin" else "Whisper"
+            print(f"Loading {stt_backend} ({whisper_model}) for STT...")
             try:
-                # Lazy import to avoid circular dependency
                 from config import Config
-
-                # Check for local model first
-                local_path = Config.model.WHISPER_DIR
-                use_local = Config.model.is_model_downloaded("whisper")
-
-                if use_local:
-                    print(f"  Using local model from: {local_path}")
-                    self.whisper_model = whisper.load_model(
-                        whisper_model, device="cpu", download_root=str(local_path)
-                    )
-                elif Config.model.OFFLINE_MODE:
-                    print("[X] Offline mode enabled but Whisper not found locally")
-                    print(f"  Expected path: {local_path}")
-                    print("  Run: python download_models.py --model whisper")
+                if sys.platform == "darwin":
+                    self.whisper_model = WhisperEngine(model_name=f"whisper-{whisper_model}")
                 else:
-                    self.whisper_model = whisper.load_model(whisper_model, device="cpu")
+                    local_path = Config.model.WHISPER_DIR
+                    use_local = Config.model.is_model_downloaded("whisper")
+
+                    if use_local:
+                        print(f"  Using local model from: {local_path}")
+                        self.whisper_model = WhisperEngine.load_model(
+                            whisper_model, device="cpu", download_root=str(local_path)
+                        )
+                    elif Config.model.OFFLINE_MODE:
+                        print("[X] Offline mode enabled but Whisper not found locally")
+                        print(f"  Expected path: {local_path}")
+                        print("  Run: python download_models.py --model whisper")
+                    else:
+                        self.whisper_model = WhisperEngine.load_model(whisper_model, device="cpu")
 
                 if self.whisper_model:
-                    print("[OK] Whisper model loaded successfully")
+                    print(f"[OK] {stt_backend} model loaded successfully")
             except Exception as e:
-                print(f"Failed to load Whisper model: {e}")
+                print(f"Failed to load {stt_backend} model: {e}")
         else:
             print("STT will run in stub mode (no transcription)")
 

@@ -45,10 +45,14 @@ class ModelConfig:
     PERSONAPLEX_DIR = MODELS_DIR / "personaplex"
     SILERO_VAD_DIR = MODELS_DIR / "silero-vad"
     WHISPER_DIR = MODELS_DIR / "whisper"
+    MLX_TTS_DIR = MODELS_DIR / "mlx-tts"
+    MLX_WHISPER_DIR = MODELS_DIR / "mlx-whisper"
 
     # Hugging Face model identifiers
     QWEN3_TTS_MODEL_ID = "Qwen/Qwen3-TTS-12Hz-1.7B-CustomVoice"
     PERSONAPLEX_MODEL_ID = "nvidia/personaplex-7b-v1"
+    MLX_TTS_MODEL_ID = "mlx-community/Qwen3-TTS-12Hz-1.7B-VoiceDesign-bf16"
+    MLX_WHISPER_MODEL_ID = "mlx-community/whisper-large-v3-turbo-asr-fp16"
 
     # Whisper STT settings
     WHISPER_MODEL = os.getenv("WHISPER_MODEL", "base")
@@ -84,6 +88,8 @@ class ModelConfig:
             "personaplex": cls.PERSONAPLEX_DIR,
             "silero-vad": cls.SILERO_VAD_DIR,
             "whisper": cls.WHISPER_DIR,
+            "mlx-tts": cls.MLX_TTS_DIR,
+            "mlx-whisper": cls.MLX_WHISPER_DIR,
         }
         return paths.get(model_type, cls.MODELS_DIR)
 

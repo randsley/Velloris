@@ -163,20 +163,84 @@ def download_whisper(force: bool = False) -> bool:
         return False
 
 
+def download_mlx_tts(force: bool = False) -> bool:
+    """Download MLX-compatible Qwen3-TTS model."""
+    model_dir = Config.model.MLX_TTS_DIR
+    model_id = Config.model.MLX_TTS_MODEL_ID
+
+    if not force and Config.model.is_model_downloaded("mlx-tts"):
+        print(f"[OK] MLX TTS already downloaded at {model_dir}")
+        return True
+
+    print(f"Downloading MLX TTS ({model_id})...")
+    print(f"  Destination: {model_dir}")
+
+    try:
+        from huggingface_hub import snapshot_download
+
+        model_dir.mkdir(parents=True, exist_ok=True)
+        snapshot_download(
+            repo_id=model_id,
+            local_dir=str(model_dir),
+            local_dir_use_symlinks=False,
+        )
+        print("[OK] MLX TTS downloaded successfully")
+        return True
+    except ImportError:
+        print("[X] huggingface_hub not installed. Run: pip install huggingface_hub")
+        return False
+    except Exception as e:
+        print(f"[X] Failed to download MLX TTS: {e}")
+        return False
+
+
+def download_mlx_whisper(force: bool = False) -> bool:
+    """Download MLX-compatible Whisper model."""
+    model_dir = Config.model.MLX_WHISPER_DIR
+    model_id = Config.model.MLX_WHISPER_MODEL_ID
+
+    if not force and Config.model.is_model_downloaded("mlx-whisper"):
+        print(f"[OK] MLX Whisper already downloaded at {model_dir}")
+        return True
+
+    print(f"Downloading MLX Whisper ({model_id})...")
+    print(f"  Destination: {model_dir}")
+
+    try:
+        from huggingface_hub import snapshot_download
+
+        model_dir.mkdir(parents=True, exist_ok=True)
+        snapshot_download(
+            repo_id=model_id,
+            local_dir=str(model_dir),
+            local_dir_use_symlinks=False,
+        )
+        print("[OK] MLX Whisper downloaded successfully")
+        return True
+    except ImportError:
+        print("[X] huggingface_hub not installed. Run: pip install huggingface_hub")
+        return False
+    except Exception as e:
+        print(f"[X] Failed to download MLX Whisper: {e}")
+        return False
+
+
 def list_models():
     """List all models and their status."""
     print("\n=== Velloris Model Status ===\n")
 
     models = [
-        ("qwen3-tts", "Qwen3-TTS-1.7B", "~3-5 GB", "Dubbing, Creative modes"),
+        ("qwen3-tts", "Qwen3-TTS-1.7B", "~3-5 GB", "Dubbing, Creative modes (non-macOS)"),
         ("personaplex", "PersonaPlex-7B", "~14 GB", "Realtime mode"),
         ("silero-vad", "Silero VAD", "~2 MB", "Voice activity detection"),
         (
             "whisper",
             f"Whisper ({Config.model.WHISPER_MODEL})",
             "~150 MB - 3 GB",
-            "Speech-to-text",
+            "Speech-to-text (non-macOS)",
         ),
+        ("mlx-tts", "MLX Qwen3-TTS", "~3-5 GB", "Dubbing, Creative modes (macOS only)"),
+        ("mlx-whisper", "MLX Whisper", "~3 GB", "Speech-to-text (macOS only)"),
     ]
 
     for model_key, name, size, usage in models:
@@ -202,6 +266,7 @@ def main():
 Examples:
   python download_models.py              # Download all models
   python download_models.py --model tts  # Download only Qwen3-TTS
+  python download_models.py --model mlx  # Download all MLX models for macOS
   python download_models.py --model vad  # Download only Silero VAD
   python download_models.py --list       # List model status
   python download_models.py --force      # Re-download all models
@@ -211,7 +276,7 @@ Examples:
     parser.add_argument(
         "--model",
         type=str,
-        choices=["all", "tts", "personaplex", "vad", "whisper"],
+        choices=["all", "tts", "personaplex", "vad", "whisper", "mlx", "mlx-tts", "mlx-whisper"],
         default="all",
         help="Which model to download (default: all)",
     )
@@ -243,7 +308,8 @@ Examples:
     results = {}
 
     if args.model in ["all", "tts"]:
-        results["qwen3-tts"] = download_qwen3_tts(force=args.force)
+        if sys.platform != "darwin":
+            results["qwen3-tts"] = download_qwen3_tts(force=args.force)
 
     if args.model in ["all", "personaplex"]:
         results["personaplex"] = download_personaplex(force=args.force)
@@ -252,7 +318,16 @@ Examples:
         results["silero-vad"] = download_silero_vad(force=args.force)
 
     if args.model in ["all", "whisper"]:
-        results["whisper"] = download_whisper(force=args.force)
+        if sys.platform != "darwin":
+            results["whisper"] = download_whisper(force=args.force)
+
+    if args.model in ["all", "mlx", "mlx-tts"]:
+        if sys.platform == "darwin":
+            results["mlx-tts"] = download_mlx_tts(force=args.force)
+
+    if args.model in ["all", "mlx", "mlx-whisper"]:
+        if sys.platform == "darwin":
+            results["mlx-whisper"] = download_mlx_whisper(force=args.force)
 
     # Summary
     print("\n" + "=" * 50)
