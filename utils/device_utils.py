@@ -126,6 +126,7 @@ def validate_flash_attention(device: str) -> bool:
     # FlashAttention 2 requires CUDA and compatible GPU
     # (Ampere, Hopper, etc.)
     try:
+        import flash_attn
         return torch.cuda.is_available()
     except ImportError:
         return False
