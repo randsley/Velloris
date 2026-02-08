@@ -16,7 +16,7 @@ import warnings
 from utils.device_utils import get_optimal_device
 
 try:
-    from mlx_audio import generate
+    from mlx_audio.tts.utils import load_model
 
     HAS_MLX_AUDIO = True
 except ImportError:
@@ -49,12 +49,19 @@ class MLXTTSEngine:
 
         self.model_name = f"mlx-community/{model_name}"
         self.sample_rate = 12000  # Qwen3-TTS native sample rate
+        self.model = None
 
         if not HAS_MLX_AUDIO:
             raise ImportError("mlx-audio library is not installed.")
 
-        print(f"[OK] MLXTTSEngine initialized for device '{self.device}'")
-        print(f"   Model: {self.model_name}")
+        try:
+            self.model = load_model(self.model_name)
+            print(f"[OK] MLXTTSEngine initialized for device '{self.device}'")
+            print(f"   Model: {self.model_name}")
+        except Exception as e:
+            print(f"[X] Failed to load MLX TTS model: {e}")
+            self.model = None
+
 
     def generate_dubbing(
         self,
@@ -77,21 +84,27 @@ class MLXTTSEngine:
         Returns:
             Tuple of (audio_array, sample_rate) or None.
         """
+        if self.model is None:
+            print("[X] MLX TTS model not loaded.")
+            return None
+
         try:
             print(f"Generating speech with MLX-Audio: {text[:50]}...")
 
-            # mlx-audio's generate function handles everything.
-            # It returns a generator, so we collect the parts.
-            audio_chunks = generate(
+            results = list(self.model.generate(
                 text=text,
-                model_name=self.model_name,
-                ref_audio_path=ref_audio_path,
-                instruction=instruct,
                 language=language,
-            )
+                instruction=instruct,
+                speaker=speaker,
+                ref_audio_path=ref_audio_path,
+            ))
+            
+            if not results:
+                print("[X] MLX-Audio generation failed to produce audio.")
+                return None
 
             # Concatenate audio chunks from the generator
-            full_audio = np.concatenate([chunk for chunk in audio_chunks])
+            full_audio = np.concatenate([res.audio for res in results])
 
             if full_audio is None or full_audio.size == 0:
                 print("[X] MLX-Audio generation failed to produce audio.")
@@ -118,4 +131,5 @@ class MLXTTSEngine:
 
     def unload(self):
         """Unload model to free memory (MLX handles this automatically)."""
+        self.model = None
         print("[OK] MLX-Audio engine unloaded (memory managed by MLX).")

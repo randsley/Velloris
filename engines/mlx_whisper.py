@@ -11,7 +11,7 @@ import warnings
 from utils.device_utils import get_optimal_device
 
 try:
-    from mlx_audio import transcribe
+    from mlx_audio.stt.generate import generate_transcription
 
     HAS_MLX_AUDIO = True
 except ImportError:
@@ -62,14 +62,13 @@ class MLXWhisperEngine:
             A dictionary containing the transcribed text.
         """
         try:
-            # mlx-audio's transcribe function returns the transcribed text directly.
-            result_text = transcribe(
-                audio_file=audio,  # Assuming it can take a numpy array
-                model_name=self.model_name,
+            result = generate_transcription(
+                model=self.model_name,
+                audio=audio,
                 language=language,
             )
 
-            return {"text": result_text}
+            return {"text": result.text}
 
         except Exception as e:
             print(f"[X] Error during MLX-Whisper transcription: {e}")

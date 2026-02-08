@@ -92,9 +92,7 @@ class LocalVoiceOrchestrator:
 
         print("\n[LOAD] Loading PersonaPlex engine for realtime mode...")
         try:
-            self.personaplex_engine = PersonaPlexEngine(
-                device=self.device, llm_model=self.llm_model
-            )
+            self.personaplex_engine = PersonaPlexEngine(device=self.device)
             print("[OK] PersonaPlex ready")
         except Exception as e:
             print(f"[X] Failed to load PersonaPlex: {e}")
