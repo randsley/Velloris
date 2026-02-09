@@ -115,6 +115,81 @@ class MLXTTSEngine:
         return ref_audio_path
 
     @staticmethod
+    def _assemble_chunks(chunks: list, crossfade_samples: int = 50) -> np.ndarray:
+        """Assemble audio chunks with cross-fade to smooth discontinuities.
+
+        Detects amplitude jumps at chunk boundaries (suspected dropouts from
+        mlx-audio #464) and applies overlap-add cross-fading to reduce audible
+        artifacts.
+
+        Args:
+            chunks: List of numpy audio arrays.
+            crossfade_samples: Number of samples for the cross-fade window.
+
+        Returns:
+            Assembled audio array.
+        """
+        if not chunks:
+            return np.array([], dtype=np.float32)
+        if len(chunks) == 1:
+            return chunks[0].astype(np.float32)
+
+        discontinuities = 0
+        assembled = chunks[0].astype(np.float32)
+
+        for chunk in chunks[1:]:
+            chunk = chunk.astype(np.float32)
+            fade_len = min(crossfade_samples, len(assembled), len(chunk))
+
+            if fade_len > 0:
+                # Detect amplitude discontinuity at boundary
+                tail_rms = np.sqrt(np.mean(assembled[-fade_len:] ** 2)) + 1e-10
+                head_rms = np.sqrt(np.mean(chunk[:fade_len] ** 2)) + 1e-10
+                ratio = max(tail_rms, head_rms) / min(tail_rms, head_rms)
+                if ratio > 10.0:
+                    discontinuities += 1
+                    logger.warning(
+                        f"Amplitude discontinuity detected (ratio={ratio:.1f}x) — "
+                        "possible audio dropout (mlx-audio #464)"
+                    )
+
+                # Cross-fade: linear ramp
+                fade_out = np.linspace(1.0, 0.0, fade_len, dtype=np.float32)
+                fade_in = np.linspace(0.0, 1.0, fade_len, dtype=np.float32)
+
+                overlap = assembled[-fade_len:] * fade_out + chunk[:fade_len] * fade_in
+                assembled = np.concatenate([assembled[:-fade_len], overlap, chunk[fade_len:]])
+            else:
+                assembled = np.concatenate([assembled, chunk])
+
+        if discontinuities > 0:
+            logger.warning(
+                f"{discontinuities} chunk discontinuities detected — "
+                "audio may have dropouts (mlx-audio #464)"
+            )
+
+        return assembled
+
+    @staticmethod
+    def _check_duration_sanity(audio: np.ndarray, sample_rate: int, text: str) -> None:
+        """Warn if generated audio is suspiciously short for the input text.
+
+        Estimates expected duration at ~150 words/min and warns if actual
+        audio is less than 50% of that estimate.
+        """
+        word_count = len(text.split())
+        if word_count < 2:
+            return
+        expected_seconds = word_count / 150.0 * 60.0  # 150 wpm
+        actual_seconds = len(audio) / sample_rate
+        if actual_seconds < expected_seconds * 0.5:
+            logger.warning(
+                f"Audio duration ({actual_seconds:.1f}s) is much shorter than "
+                f"expected (~{expected_seconds:.1f}s for {word_count} words) — "
+                "possible audio dropout (mlx-audio #464)"
+            )
+
+    @staticmethod
     def _rms_normalize(audio: np.ndarray, target_dbfs: float = -20.0) -> np.ndarray:
         """RMS-based normalization with soft clipping.
 
@@ -200,11 +275,13 @@ class MLXTTSEngine:
                 print("[X] MLX-Audio generation failed to produce audio.")
                 return None
 
-            full_audio = np.concatenate(chunks)
+            full_audio = self._assemble_chunks(chunks)
 
             if full_audio.size == 0:
                 print("[X] MLX-Audio generation failed to produce audio.")
                 return None
+
+            self._check_duration_sanity(full_audio, self.sample_rate, text)
 
             # RMS normalize and soft-clip
             audio = self._rms_normalize(full_audio.astype(np.float32))

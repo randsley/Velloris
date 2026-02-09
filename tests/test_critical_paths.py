@@ -537,8 +537,8 @@ class TestChunkValidation:
         result = engine.generate_dubbing(text="Test")
         assert result is not None
         audio, sr = result
-        # Only 2 valid chunks of 1000 samples each
-        assert len(audio) == 2000
+        # 2 valid chunks of 1000 samples, minus 50-sample cross-fade overlap
+        assert len(audio) == 1950
 
 
 class TestRefAudioValidation:
@@ -619,6 +619,116 @@ class TestModelCaching:
 
         # Cleanup
         MLXTTSEngine._model_cache.clear()
+
+
+class TestChunkAssembly:
+    """Test cross-fade chunk assembly for audio dropout mitigation."""
+
+    def test_single_chunk_passthrough(self):
+        """Single chunk should be returned as-is."""
+        from engines.mlx_tts import MLXTTSEngine
+
+        chunk = np.ones(500, dtype=np.float32) * 0.5
+        result = MLXTTSEngine._assemble_chunks([chunk])
+        np.testing.assert_array_equal(result, chunk)
+
+    def test_empty_list_returns_empty(self):
+        """Empty chunk list should return empty array."""
+        from engines.mlx_tts import MLXTTSEngine
+
+        result = MLXTTSEngine._assemble_chunks([])
+        assert len(result) == 0
+
+    def test_crossfade_smooth_transition(self):
+        """Cross-fade should produce smooth transitions between chunks."""
+        from engines.mlx_tts import MLXTTSEngine
+
+        # Two chunks with a sharp boundary (0.5 -> -0.5)
+        chunk_a = np.ones(200, dtype=np.float32) * 0.5
+        chunk_b = np.ones(200, dtype=np.float32) * -0.5
+
+        result = MLXTTSEngine._assemble_chunks([chunk_a, chunk_b], crossfade_samples=50)
+
+        # The cross-fade region should have intermediate values
+        # Total length = 200 + 200 - 50 = 350
+        assert len(result) == 350
+
+        # Middle of cross-fade region should be near zero (blend of 0.5 and -0.5)
+        mid = 200 - 25  # middle of the overlap
+        assert abs(result[mid]) < 0.3, "Cross-fade midpoint should blend the two amplitudes"
+
+    def test_discontinuity_detected(self, caplog):
+        """Large amplitude jumps should trigger a warning."""
+        from engines.mlx_tts import MLXTTSEngine
+        import logging
+
+        # Chunk with normal amplitude followed by near-silent chunk
+        chunk_a = np.ones(200, dtype=np.float32) * 0.8
+        chunk_b = np.ones(200, dtype=np.float32) * 0.001
+
+        with caplog.at_level(logging.WARNING, logger="engines.mlx_tts"):
+            MLXTTSEngine._assemble_chunks([chunk_a, chunk_b], crossfade_samples=50)
+
+        assert any("discontinuity" in r.message.lower() for r in caplog.records), (
+            "Should warn about amplitude discontinuity"
+        )
+
+    def test_no_warning_for_smooth_chunks(self, caplog):
+        """Similar-amplitude chunks should not trigger warnings."""
+        from engines.mlx_tts import MLXTTSEngine
+        import logging
+
+        chunk_a = np.ones(200, dtype=np.float32) * 0.5
+        chunk_b = np.ones(200, dtype=np.float32) * 0.45
+
+        with caplog.at_level(logging.WARNING, logger="engines.mlx_tts"):
+            MLXTTSEngine._assemble_chunks([chunk_a, chunk_b], crossfade_samples=50)
+
+        assert not any("discontinuity" in r.message.lower() for r in caplog.records)
+
+
+class TestDurationSanityCheck:
+    """Test duration sanity check for audio dropout detection."""
+
+    def test_warns_on_short_audio(self, caplog):
+        """Should warn when audio is much shorter than expected."""
+        from engines.mlx_tts import MLXTTSEngine
+        import logging
+
+        # 20 words at 150wpm = 8 seconds expected, give only 1 second
+        text = " ".join(["word"] * 20)
+        audio = np.zeros(12000, dtype=np.float32)  # 1 second at 12kHz
+
+        with caplog.at_level(logging.WARNING, logger="engines.mlx_tts"):
+            MLXTTSEngine._check_duration_sanity(audio, 12000, text)
+
+        assert any("shorter than expected" in r.message for r in caplog.records)
+
+    def test_no_warning_for_normal_audio(self, caplog):
+        """Should not warn when audio duration is reasonable."""
+        from engines.mlx_tts import MLXTTSEngine
+        import logging
+
+        # 10 words at 150wpm = 4 seconds, give 5 seconds
+        text = " ".join(["word"] * 10)
+        audio = np.zeros(60000, dtype=np.float32)  # 5 seconds at 12kHz
+
+        with caplog.at_level(logging.WARNING, logger="engines.mlx_tts"):
+            MLXTTSEngine._check_duration_sanity(audio, 12000, text)
+
+        assert not any("shorter than expected" in r.message for r in caplog.records)
+
+    def test_short_text_skipped(self, caplog):
+        """Should skip check for very short text (< 2 words)."""
+        from engines.mlx_tts import MLXTTSEngine
+        import logging
+
+        audio = np.zeros(100, dtype=np.float32)  # tiny audio
+
+        with caplog.at_level(logging.WARNING, logger="engines.mlx_tts"):
+            MLXTTSEngine._check_duration_sanity(audio, 12000, "Hi")
+
+        assert not any("shorter than expected" in r.message for r in caplog.records)
 
 
 if __name__ == "__main__":

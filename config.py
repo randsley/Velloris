@@ -144,6 +144,19 @@ class ApplicationConfig:
     # Dubbing mode settings (Qwen3-TTS high-fidelity)
     DUBBING_CHUNK_SIZE = 256  # Process script in chunks
     DUBBING_TIMEOUT = 60.0  # Timeout for TTS generation
+    DUBBING_LANGUAGE = os.getenv("DUBBING_LANGUAGE", "english")  # Default language for TTS
+    SUPPORTED_LANGUAGES = [
+        "english",
+        "chinese",
+        "japanese",
+        "korean",
+        "german",
+        "french",
+        "russian",
+        "portuguese",
+        "spanish",
+        "italian",
+    ]  # Languages supported by Qwen3-TTS and MLX-Audio
 
     # Logging
     LOG_LEVEL = os.getenv("LOG_LEVEL", "INFO")
