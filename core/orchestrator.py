@@ -30,6 +30,7 @@ from pathlib import Path
 import sys
 
 from engines.personaplex import PersonaPlexEngine
+from config import Config
 from utils.device_utils import get_optimal_device, get_platform_info
 
 # Conditional import for TTS engine based on platform
@@ -320,10 +321,8 @@ class LocalVoiceOrchestrator:
         try:
             # Step 1: Generate creative response with Ollama
             print(f"   🧠 Generating response with {self.llm_model}...")
-            from langchain_ollama import OllamaLLM
 
-            llm = OllamaLLM(model=self.llm_model)
-            response_text = llm.invoke(text)
+            response_text = self.ollama_brain.invoke(text)
             print(
                 f"   LLM response: {response_text[:100]}{'...' if len(response_text) > 100 else ''}"
             )
@@ -336,8 +335,9 @@ class LocalVoiceOrchestrator:
             result = self.tts_engine.generate_dubbing(
                 text=response_text,
                 ref_audio_path=ref_audio_path,
-                language="english",
+                language=Config.app.DUBBING_LANGUAGE,
                 speaker="serena",
+                instruct=emotion,
             )
 
             if result:
@@ -394,7 +394,7 @@ class LocalVoiceOrchestrator:
             result = self.tts_engine.generate_dubbing(
                 text=text,
                 ref_audio_path=ref_audio_path,
-                language="english",
+                language=Config.app.DUBBING_LANGUAGE,
                 speaker="serena",
             )
 

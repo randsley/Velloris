@@ -9,11 +9,16 @@ qwen-tts and other MLX-based libraries.
 Repo: https://github.com/Blaizzy/mlx-audio
 """
 
+import logging
 import numpy as np
+import os
+import threading
 from typing import Optional, Tuple
 import warnings
 
 from utils.device_utils import get_optimal_device
+
+logger = logging.getLogger(__name__)
 
 try:
     from mlx_audio.tts.utils import load_model
@@ -23,11 +28,21 @@ except ImportError:
     HAS_MLX_AUDIO = False
     warnings.warn("mlx-audio not installed. On macOS, run: pip install mlx-audio")
 
+# Supported audio extensions for reference audio
+_SUPPORTED_AUDIO_EXTENSIONS = {".wav", ".mp3", ".flac", ".ogg", ".m4a"}
+
+# Minimum file size for valid audio (1KB)
+_MIN_AUDIO_FILE_SIZE = 1024
+
 
 class MLXTTSEngine:
     """
     MLX-Audio Engine for high-quality speech synthesis on Apple Silicon.
     """
+
+    # Class-level model cache and lock
+    _model_cache: dict = {}
+    _cache_lock = threading.Lock()
 
     def __init__(
         self,
@@ -55,13 +70,68 @@ class MLXTTSEngine:
             raise ImportError("mlx-audio library is not installed.")
 
         try:
-            self.model = load_model(self.model_name)
+            self.model = self._get_cached_model(self.model_name)
             print(f"[OK] MLXTTSEngine initialized for device '{self.device}'")
             print(f"   Model: {self.model_name}")
         except Exception as e:
             print(f"[X] Failed to load MLX TTS model: {e}")
             self.model = None
 
+    @classmethod
+    def _get_cached_model(cls, model_name: str):
+        """Load model from cache or disk, thread-safe."""
+        with cls._cache_lock:
+            if model_name in cls._model_cache:
+                logger.info(f"Reusing cached model: {model_name}")
+                return cls._model_cache[model_name]
+            model = load_model(model_name)
+            cls._model_cache[model_name] = model
+            return model
+
+    @staticmethod
+    def _validate_ref_audio(ref_audio_path: Optional[str]) -> Optional[str]:
+        """Validate reference audio file. Returns path if valid, None otherwise."""
+        if ref_audio_path is None:
+            return None
+
+        if not os.path.isfile(ref_audio_path):
+            logger.warning(f"Reference audio not found: {ref_audio_path}")
+            return None
+
+        ext = os.path.splitext(ref_audio_path)[1].lower()
+        if ext not in _SUPPORTED_AUDIO_EXTENSIONS:
+            logger.warning(
+                f"Unsupported audio format '{ext}'. Supported: {_SUPPORTED_AUDIO_EXTENSIONS}"
+            )
+            return None
+
+        size = os.path.getsize(ref_audio_path)
+        if size < _MIN_AUDIO_FILE_SIZE:
+            logger.warning(
+                f"Reference audio too small ({size} bytes, min {_MIN_AUDIO_FILE_SIZE})"
+            )
+            return None
+
+        return ref_audio_path
+
+    @staticmethod
+    def _rms_normalize(audio: np.ndarray, target_dbfs: float = -20.0) -> np.ndarray:
+        """RMS-based normalization with soft clipping.
+
+        Targets a specific loudness level (dBFS) while preserving dynamic range,
+        then applies tanh soft clipping to prevent hard clipping artifacts.
+        """
+        rms = np.sqrt(np.mean(audio**2))
+        if rms < 1e-8:
+            return audio
+
+        target_rms = 10 ** (target_dbfs / 20.0)
+        gain = target_rms / rms
+        audio = audio * gain
+
+        # Soft clip via tanh to avoid hard clipping artifacts
+        audio = np.tanh(audio)
+        return audio
 
     def generate_dubbing(
         self,
@@ -88,36 +158,61 @@ class MLXTTSEngine:
             print("[X] MLX TTS model not loaded.")
             return None
 
+        # Validate reference audio
+        ref_audio_path = self._validate_ref_audio(ref_audio_path)
+
         try:
             print(f"Generating speech with MLX-Audio: {text[:50]}...")
 
-            results = list(self.model.generate(
+            chunks = []
+            chunk_count = 0
+            dropped_count = 0
+
+            for res in self.model.generate(
                 text=text,
                 language=language,
                 instruction=instruct,
                 voice=speaker,
                 ref_audio_path=ref_audio_path,
-            ))
-            
-            if not results:
+            ):
+                chunk = res.audio
+                chunk_count += 1
+
+                # Skip empty or silent chunks
+                if chunk is None or chunk.size == 0:
+                    dropped_count += 1
+                    logger.warning(f"Dropped empty chunk #{chunk_count}")
+                    continue
+
+                if np.max(np.abs(chunk)) < 1e-7:
+                    dropped_count += 1
+                    logger.warning(f"Dropped silent chunk #{chunk_count}")
+                    continue
+
+                chunks.append(chunk)
+
+            if dropped_count > 0:
+                logger.warning(
+                    f"Dropped {dropped_count}/{chunk_count} chunks (empty/silent)"
+                )
+
+            if not chunks:
                 print("[X] MLX-Audio generation failed to produce audio.")
                 return None
 
-            # Concatenate audio chunks from the generator
-            full_audio = np.concatenate([res.audio for res in results])
+            full_audio = np.concatenate(chunks)
 
-            if full_audio is None or full_audio.size == 0:
+            if full_audio.size == 0:
                 print("[X] MLX-Audio generation failed to produce audio.")
                 return None
 
-            # Ensure float32 and normalize
-            audio = full_audio.astype(np.float32)
-            if np.max(np.abs(audio)) > 0:
-                audio = audio / np.max(np.abs(audio))
+            # RMS normalize and soft-clip
+            audio = self._rms_normalize(full_audio.astype(np.float32))
 
             duration = len(audio) / self.sample_rate
             print(
                 f"[OK] Generated {duration:.2f}s of audio at {self.sample_rate}Hz with MLX-Audio"
+                f" ({chunk_count} chunks, {dropped_count} dropped)"
             )
 
             return audio, self.sample_rate
