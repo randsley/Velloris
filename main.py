@@ -144,16 +144,22 @@ class VellorisApplication:
 
                 # Process with brain
                 print("\nVelloris: Processing...")
-                response_text, audio_response = await self.brain.process_voice_turn(
-                    user_input
-                )
+                result = await self.brain.process_voice_turn(user_input)
+
+                if isinstance(result, tuple) and len(result) == 3:
+                    # New format: (response_text, audio, sample_rate)
+                    response_text, audio_response, sr = result
+                else:
+                    # Legacy format: (response_text, audio)
+                    response_text, audio_response = result
+                    sr = 24000  # Default sample rate
 
                 print(f"Velloris: {response_text}\n")
 
                 # If audio was generated, play it
                 if audio_response is not None and len(audio_response) > 0:
                     print()
-                    play_audio(audio_response, samplerate=24000)
+                    play_audio(audio_response, samplerate=sr)
 
                 # Reset interruption status for next turn
                 if self.interruption_handler:

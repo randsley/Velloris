@@ -320,33 +320,66 @@ Examples:
     print()
 
     results = {}
+    is_darwin = sys.platform == "darwin"
+    is_linux = sys.platform == "linux"
 
+    # TTS models (platform-specific)
     if args.model in ["all", "tts"]:
-        if sys.platform != "darwin":
+        if is_darwin:
+            # macOS uses MLX TTS, not Qwen3-TTS
+            if args.model == "tts":
+                print(
+                    "[i] Qwen3-TTS is not available on macOS. Use '--model mlx-tts' instead."
+                )
+        else:
             results["qwen3-tts"] = download_qwen3_tts(force=args.force)
 
+    # PersonaPlex: NVIDIA GPU + Linux/Windows only (NOT macOS)
     if args.model in ["all", "personaplex"]:
-        results["personaplex"] = download_personaplex(force=args.force)
+        if is_darwin:
+            print(
+                "[i] PersonaPlex is not available on macOS (requires NVIDIA GPU and Linux/Windows)."
+            )
+        else:
+            results["personaplex"] = download_personaplex(force=args.force)
 
+    # Silero VAD (works on all platforms)
     if args.model in ["all", "vad"]:
         results["silero-vad"] = download_silero_vad(force=args.force)
 
+    # Whisper: Standard openai-whisper for non-macOS
     if args.model in ["all", "whisper"]:
-        if sys.platform != "darwin":
+        if is_darwin:
+            # macOS uses MLX Whisper, not openai-whisper
+            if args.model == "whisper":
+                print(
+                    "[i] Openai-Whisper is not available on macOS. Use '--model mlx-whisper' instead."
+                )
+        else:
             results["whisper"] = download_whisper(force=args.force)
 
+    # MLX models (macOS only)
     if args.model in ["all", "mlx", "mlx-tts"]:
-        if sys.platform == "darwin":
+        if is_darwin:
             results["mlx-tts"] = download_mlx_tts(force=args.force)
+        elif args.model == "mlx-tts":
+            print("[i] MLX models are only available on macOS.")
 
     if args.model in ["all", "mlx", "mlx-whisper"]:
-        if sys.platform == "darwin":
+        if is_darwin:
             results["mlx-whisper"] = download_mlx_whisper(force=args.force)
+        elif args.model == "mlx-whisper":
+            print("[i] MLX models are only available on macOS.")
 
     # Summary
     print("\n" + "=" * 50)
     print("Download Summary")
     print("=" * 50)
+
+    if not results:
+        print("\n[i] No models to download for this platform/selection.")
+        print("    (Models may have been skipped due to platform incompatibility)")
+        sys.exit(0)
 
     success = all(results.values())
     for model, status in results.items():
@@ -354,7 +387,7 @@ Examples:
         print(f"  {icon} {model}")
 
     if success:
-        print("\n[OK] All models downloaded successfully!")
+        print("\n[OK] All requested models downloaded successfully!")
         print("\nTo enable offline mode, set environment variable:")
         print("  export VELLORIS_OFFLINE=true  # Linux/macOS")
         print("  set VELLORIS_OFFLINE=true     # Windows")

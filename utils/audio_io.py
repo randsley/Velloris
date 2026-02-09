@@ -16,6 +16,14 @@ import sounddevice as sd
 import numpy as np
 from utils.vad_handler import InterruptionHandler
 
+# Import AudioPlayer from mlx-audio for compatible playback
+try:
+    from mlx_audio.tts.audio_player import AudioPlayer as MLXAudioPlayer
+    HAS_MLX_AUDIO_PLAYER = True
+except ImportError:
+    HAS_MLX_AUDIO_PLAYER = False
+    MLXAudioPlayer = None
+
 # Conditionally import Whisper engine
 if sys.platform == "darwin":
     from engines.mlx_whisper import MLXWhisperEngine as WhisperEngine
@@ -36,24 +44,35 @@ else:
 
 def play_audio(audio_data: np.ndarray, samplerate: int = 24000) -> None:
     """
-    Simple audio playback without interruption handling.
+    Audio playback using mlx-audio's AudioPlayer.
+    Plays at the native sample rate provided without resampling.
 
     Args:
         audio_data: Audio samples as numpy array
-        samplerate: Sample rate in Hz (default 24000)
+        samplerate: Source sample rate in Hz (default 24000)
     """
     # Ensure audio is float32
     if audio_data.dtype != np.float32:
         audio_data = audio_data.astype(np.float32)
 
-    # Clip to [-1, 1] range to prevent distortion
-    audio_data = np.clip(audio_data, -1.0, 1.0)
+    duration = len(audio_data) / samplerate
+    print(f"[AUDIO] Playing {duration:.2f}s of audio at {samplerate}Hz...")
 
-    print("[AUDIO] Playing audio...")
     try:
-        sd.play(audio_data, samplerate=samplerate)
-        sd.wait()  # Wait for playback to complete
-        print("[OK] Playback complete")
+        if HAS_MLX_AUDIO_PLAYER:
+            # Use mlx-audio's AudioPlayer (same as CLI)
+            print("[AUDIO] Using mlx-audio AudioPlayer")
+            player = MLXAudioPlayer(sample_rate=samplerate, buffer_size=2048)
+            player.queue_audio(audio_data)
+            player.wait_for_drain()
+            player.stop()
+            print("[OK] Playback complete")
+        else:
+            # Fallback to sounddevice
+            print("[AUDIO] Using sounddevice (mlx-audio not available)")
+            sd.play(audio_data, samplerate=samplerate)
+            sd.wait()
+            print("[OK] Playback complete")
     except Exception as e:
         print(f"[X] Playback error: {e}")
 

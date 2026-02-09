@@ -64,7 +64,7 @@ class VoiceAgentBrain:
 
     async def process_voice_turn(
         self, user_text: str
-    ) -> Tuple[str, Optional[np.ndarray]]:
+    ) -> Tuple[str, Optional[np.ndarray], int]:
         """
         Takes user text, generates LLM response, and optionally synthesizes audio.
 
@@ -74,7 +74,7 @@ class VoiceAgentBrain:
             user_text: Transcribed user input
 
         Returns:
-            Tuple of (response_text, audio_response) where audio_response may be None
+            Tuple of (response_text, audio_response, sample_rate) where audio_response may be None
         """
         if self.mode == "realtime":
             print(
@@ -83,15 +83,15 @@ class VoiceAgentBrain:
             print(
                 "   Use PersonaPlex.generate_s2s_response() directly for realtime S2S."
             )
-            return user_text, None
+            return user_text, None, 24000
 
         if self.mode != "creative":
             print(f"[!]  WARNING: Brain only used in creative mode, not '{self.mode}'")
-            return user_text, None
+            return user_text, None, 24000
 
         if self.llm is None:
             print("[X] LLM not available. Is Ollama running?")
-            return "Error: LLM not available", None
+            return "Error: LLM not available", None, 24000
 
         print("[BRAIN] Agent Thinking...")
 
@@ -128,11 +128,12 @@ class VoiceAgentBrain:
 
         # Step 3: Generate audio if TTS or orchestrator available
         audio_response = None
+        sample_rate = 24000  # Default sample rate
         if self.tts_engine is not None:
             try:
                 result = self.tts_engine.generate_dubbing(full_response)
                 if result:
-                    audio_response = result[0]  # Extract audio array from (audio, sr)
+                    audio_response, sample_rate = result  # Extract audio and sr
             except Exception:
                 pass
         elif self.orchestrator is not None:
@@ -142,11 +143,11 @@ class VoiceAgentBrain:
                     text=full_response, mode="dubbing"
                 )
                 if result:
-                    audio_response = result[0]  # Extract audio array from (audio, sr)
+                    audio_response, sample_rate = result  # Extract audio and sr
             except Exception as e:
                 print(f"[X] TTS error: {e}")
 
-        return full_response, audio_response
+        return full_response, audio_response, sample_rate
 
     async def stream_tokens(self, user_text: str) -> AsyncIterator[str]:
         """

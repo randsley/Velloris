@@ -36,11 +36,11 @@ class TestOrchestrator:
         orchestrator = LocalVoiceOrchestrator(device="cpu")
 
         # Engines should be None initially
-        assert orchestrator.personaplex_engine is None
+        assert orchestrator.s2s_engine is None
         assert orchestrator.tts_engine is None
 
-        # Load PersonaPlex
-        orchestrator._load_personaplex()
+        # Load S2S engine
+        orchestrator._load_s2s_engine()
         # Note: This will fail if dependencies not installed
         # In CI, we'll skip this test
 
@@ -48,7 +48,7 @@ class TestOrchestrator:
         """Test engine unloading."""
         orchestrator = LocalVoiceOrchestrator(device="cpu")
         orchestrator.unload_engines()
-        assert orchestrator.personaplex_engine is None
+        assert orchestrator.s2s_engine is None
         assert orchestrator.tts_engine is None
 
 
@@ -185,6 +185,86 @@ class TestConfig:
         """Test config paths exist or can be created."""
         assert Config.model.VOICES_DIR.parent.exists()
         assert isinstance(Config.model.VOICE_REFERENCE, str)
+
+
+class TestS2SEngines:
+    """Test S2S engine selection and initialization (platform-aware)."""
+
+    def test_personaplex_initialization(self):
+        """Test PersonaPlex initialization (all platforms)."""
+        from engines.personaplex import PersonaPlexEngine
+
+        engine = PersonaPlexEngine(device="cpu")
+        assert engine is not None
+        assert engine.sample_rate == 24000
+        assert engine.voice in PersonaPlexEngine.AVAILABLE_VOICES
+
+        engine.unload()
+
+    def test_macecho_initialization_on_macos(self):
+        """Test MacEcho initialization on macOS."""
+        import sys
+
+        if sys.platform != "darwin":
+            pytest.skip("MacEcho test skipped on non-macOS platform")
+
+        from engines.macecho_s2s import MacEchoEngine
+
+        engine = MacEchoEngine(device="cpu")
+        assert engine is not None
+        assert engine.sample_rate == 24000
+        assert engine.voice in MacEchoEngine.AVAILABLE_VOICES
+
+        engine.unload()
+
+    def test_macecho_voice_mapping_complete(self):
+        """Test that all PersonaPlex voices are mapped in MacEcho."""
+        from engines.macecho_s2s import MacEchoEngine
+        from engines.personaplex import PersonaPlexEngine
+
+        pp_voices = set(PersonaPlexEngine.AVAILABLE_VOICES.keys())
+        me_voices = set(MacEchoEngine.VOICE_MAPPING.keys())
+
+        # Convert PersonaPlex names to shortcodes for comparison
+        pp_shortcodes = set(PersonaPlexEngine.AVAILABLE_VOICES.values())
+
+        # MacEcho should have mappings for all PersonaPlex shortcodes
+        for shortcode in pp_shortcodes:
+            assert shortcode in MacEchoEngine.VOICE_MAPPING, (
+                f"Voice {shortcode} not mapped in MacEcho"
+            )
+
+    def test_macecho_stub_mode(self):
+        """Test MacEcho stub mode (no installation required)."""
+        from engines.macecho_s2s import HAS_MACECHO, MacEchoEngine
+
+        # Stub mode should work even if not installed
+        engine = MacEchoEngine(device="cpu")
+        assert engine is not None
+
+        # Call should return None without real model
+        if not HAS_MACECHO:
+            audio = np.random.randn(16000).astype(np.float32)
+            result = engine.generate_s2s_response(audio, sr=24000)
+            assert result is None
+
+        engine.unload()
+
+    def test_personaplex_stub_mode(self):
+        """Test PersonaPlex stub mode (no installation required)."""
+        from engines.personaplex import HAS_PERSONAPLEX, PersonaPlexEngine
+
+        # Stub mode should work even if not installed
+        engine = PersonaPlexEngine(device="cpu")
+        assert engine is not None
+
+        # Call should return None without real model
+        if not HAS_PERSONAPLEX:
+            audio = np.random.randn(24000).astype(np.float32)
+            result = engine.generate_s2s_response(audio, sr=24000)
+            assert result is None
+
+        engine.unload()
 
 
 class TestIntegration:

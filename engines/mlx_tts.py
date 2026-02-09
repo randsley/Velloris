@@ -46,7 +46,7 @@ class MLXTTSEngine:
 
     def __init__(
         self,
-        model_name: str = "Qwen3-TTS-12Hz-1.7B-CustomVoice-bf16",
+        model_name: str = "Qwen3-TTS-12Hz-0.6B-CustomVoice-8bit",
         device: str = "mps",
     ):
         """
@@ -123,22 +123,32 @@ class MLXTTSEngine:
         artifacts.
 
         Args:
-            chunks: List of numpy audio arrays.
+            chunks: List of audio arrays (MLX or numpy).
             crossfade_samples: Number of samples for the cross-fade window.
 
         Returns:
-            Assembled audio array.
+            Assembled audio array (numpy, float32).
         """
         if not chunks:
             return np.array([], dtype=np.float32)
+
+        # Helper: convert MLX arrays to numpy
+        def to_numpy(chunk):
+            if hasattr(chunk, 'tolist'):
+                # MLX array - convert via tolist() then to numpy
+                return np.asarray(chunk.tolist(), dtype=np.float32)
+            else:
+                # Already numpy or convertible
+                return np.asarray(chunk, dtype=np.float32)
+
         if len(chunks) == 1:
-            return chunks[0].astype(np.float32)
+            return to_numpy(chunks[0])
 
         discontinuities = 0
-        assembled = chunks[0].astype(np.float32)
+        assembled = to_numpy(chunks[0])
 
         for chunk in chunks[1:]:
-            chunk = chunk.astype(np.float32)
+            chunk = to_numpy(chunk)
             fade_len = min(crossfade_samples, len(assembled), len(chunk))
 
             if fade_len > 0:
@@ -191,10 +201,11 @@ class MLXTTSEngine:
 
     @staticmethod
     def _rms_normalize(audio: np.ndarray, target_dbfs: float = -20.0) -> np.ndarray:
-        """RMS-based normalization with soft clipping.
+        """RMS-based normalization preserving dynamic range.
 
-        Targets a specific loudness level (dBFS) while preserving dynamic range,
-        then applies tanh soft clipping to prevent hard clipping artifacts.
+        Targets a specific loudness level (dBFS) without aggressive compression.
+        The generated audio from CosyVoice is already well-formed; hard clipping
+        is rarely needed and tanh compression destroys quality.
         """
         rms = np.sqrt(np.mean(audio**2))
         if rms < 1e-8:
@@ -204,100 +215,94 @@ class MLXTTSEngine:
         gain = target_rms / rms
         audio = audio * gain
 
-        # Soft clip via tanh to avoid hard clipping artifacts
-        audio = np.tanh(audio)
+        # Clip only extreme peaks (values > 1.0) to prevent actual hard clipping
+        # but preserve all dynamic range and quality
+        audio = np.clip(audio, -1.0, 1.0)
         return audio
 
     def generate_dubbing(
         self,
         text: str,
         ref_audio_path: Optional[str] = None,
-        language: str = "english",
+        language: str = "",
         speaker: Optional[str] = None,
         instruct: str = "",
     ) -> Optional[Tuple[np.ndarray, int]]:
         """
-        Generate speech from text using MLX-Audio.
+        Generate speech from text by calling mlx-audio CLI tool.
+        This guarantees identical output to running the CLI manually.
 
         Args:
             text: Text to synthesize.
             ref_audio_path: Path to reference audio for voice cloning.
             language: Language of the text.
-            speaker: Speaker name (not directly used, for API compatibility).
+            speaker: Speaker name (voice).
             instruct: Instruction for tone/emotion/style.
 
         Returns:
             Tuple of (audio_array, sample_rate) or None.
         """
-        if self.model is None:
-            print("[X] MLX TTS model not loaded.")
-            return None
-
-        # Validate reference audio
-        ref_audio_path = self._validate_ref_audio(ref_audio_path)
+        import subprocess
+        import tempfile
+        import soundfile as sf
+        import glob
 
         try:
-            print(f"Generating speech with MLX-Audio: {text[:50]}...")
+            print(f"Generating speech with mlx-audio CLI: {text[:50]}...")
 
-            chunks = []
-            chunk_count = 0
-            dropped_count = 0
+            # Create temporary directory for output
+            with tempfile.TemporaryDirectory() as tmpdir:
+                # Build CLI command
+                cmd = [
+                    "python3", "-m", "mlx_audio.tts.generate",
+                    "--model", "mlx-community/Qwen3-TTS-12Hz-0.6B-CustomVoice-8bit",
+                    "--text", text,
+                    "--voice", speaker or "Aiden",
+                    "--temperature", "0.0",
+                    "--cfg_scale", "1.5",
+                    "--speed", "1.0",
+                    "--lang_code", language or "en",
+                    "--output_path", tmpdir,
+                    "--file_prefix", "generated",
+                ]
 
-            for res in self.model.generate(
-                text=text,
-                language=language,
-                instruction=instruct,
-                voice=speaker,
-                ref_audio_path=ref_audio_path,
-            ):
-                chunk = res.audio
-                chunk_count += 1
+                # Add optional parameters
+                if instruct:
+                    cmd.extend(["--instruct", instruct])
+                if ref_audio_path:
+                    cmd.extend(["--ref_audio", ref_audio_path])
 
-                # Skip empty or silent chunks
-                if chunk is None or chunk.size == 0:
-                    dropped_count += 1
-                    logger.warning(f"Dropped empty chunk #{chunk_count}")
-                    continue
+                print(f"  [DEBUG] Calling CLI...")
 
-                if np.max(np.abs(chunk)) < 1e-7:
-                    dropped_count += 1
-                    logger.warning(f"Dropped silent chunk #{chunk_count}")
-                    continue
+                # Run CLI command (suppress output)
+                result = subprocess.run(cmd, capture_output=True, text=True, timeout=120)
 
-                chunks.append(chunk)
+                if result.returncode != 0:
+                    print(f"[X] CLI error: {result.stderr[:200]}")
+                    return None
 
-            if dropped_count > 0:
-                logger.warning(
-                    f"Dropped {dropped_count}/{chunk_count} chunks (empty/silent)"
-                )
+                # Find generated audio file
+                audio_files = glob.glob(f"{tmpdir}/generated_*.wav")
+                if not audio_files:
+                    print("[X] No audio file generated")
+                    return None
 
-            if not chunks:
-                print("[X] MLX-Audio generation failed to produce audio.")
-                return None
+                # Load the audio file
+                audio_file = audio_files[0]
+                audio, sr = sf.read(audio_file)
+                audio = audio.astype(np.float32)
 
-            full_audio = self._assemble_chunks(chunks)
+                duration = len(audio) / sr
+                print(f"[OK] Generated {duration:.2f}s of audio at {sr}Hz (via CLI)")
 
-            if full_audio.size == 0:
-                print("[X] MLX-Audio generation failed to produce audio.")
-                return None
+                return audio, sr
 
-            self._check_duration_sanity(full_audio, self.sample_rate, text)
-
-            # RMS normalize and soft-clip
-            audio = self._rms_normalize(full_audio.astype(np.float32))
-
-            duration = len(audio) / self.sample_rate
-            print(
-                f"[OK] Generated {duration:.2f}s of audio at {self.sample_rate}Hz with MLX-Audio"
-                f" ({chunk_count} chunks, {dropped_count} dropped)"
-            )
-
-            return audio, self.sample_rate
-
+        except subprocess.TimeoutExpired:
+            print("[X] CLI generation timed out")
+            return None
         except Exception as e:
-            print(f"[X] Error during MLX-Audio generation: {e}")
+            print(f"[X] Error during generation: {e}")
             import traceback
-
             traceback.print_exc()
             return None
 

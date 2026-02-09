@@ -47,6 +47,9 @@ class ModelConfig:
     WHISPER_DIR = MODELS_DIR / "whisper"
     MLX_TTS_DIR = MODELS_DIR / "mlx-tts"
     MLX_WHISPER_DIR = MODELS_DIR / "mlx-whisper"
+    MACECHO_DIR = MODELS_DIR / "macecho"  # macOS only
+    MACECHO_SENSEVOICE_DIR = MODELS_DIR / "macecho-sensevoice"  # ASR model
+    MACECHO_COSYVOICE_DIR = MODELS_DIR / "macecho-cosyvoice"  # TTS model
 
     # Hugging Face model identifiers
     QWEN3_TTS_MODEL_ID = "Qwen/Qwen3-TTS-12Hz-1.7B-CustomVoice"
@@ -90,6 +93,9 @@ class ModelConfig:
             "whisper": cls.WHISPER_DIR,
             "mlx-tts": cls.MLX_TTS_DIR,
             "mlx-whisper": cls.MLX_WHISPER_DIR,
+            "macecho": cls.MACECHO_DIR,
+            "macecho-sensevoice": cls.MACECHO_SENSEVOICE_DIR,
+            "macecho-cosyvoice": cls.MACECHO_COSYVOICE_DIR,
         }
         return paths.get(model_type, cls.MODELS_DIR)
 
@@ -127,24 +133,27 @@ class ApplicationConfig:
     DEFAULT_MODE = os.getenv("DEFAULT_MODE", "realtime")  # realtime, dubbing, creative
     MODES = ["realtime", "dubbing", "creative"]
 
-    # Real-time mode settings (PersonaPlex end-to-end S2S)
+    # Real-time mode settings (PersonaPlex/MacEcho end-to-end S2S)
     REALTIME_VOICE = os.getenv("REALTIME_VOICE", "NATF2")  # Default voice
     REALTIME_PERSONA = os.getenv(
         "REALTIME_PERSONA", "You are a helpful and friendly AI assistant."
     )
     REALTIME_STREAMING = True  # Enable streaming for full-duplex
     REALTIME_TIMEOUT = 30.0  # Timeout for user input (seconds)
-    REALTIME_SAMPLE_RATE = 24000  # PersonaPlex native sample rate
+    REALTIME_SAMPLE_RATE = 24000  # Native sample rate for output
+    MACECHO_RESPONSE_TIMEOUT = float(
+        os.getenv("MACECHO_RESPONSE_TIMEOUT", "10.0")
+    )  # Timeout for MacEcho response (seconds)
 
     # Creative mode settings (Ollama + Qwen3-TTS)
     CREATIVE_LLM = os.getenv("CREATIVE_LLM", "llama3")
     CREATIVE_DEFAULT_EMOTION = os.getenv("CREATIVE_EMOTION", "")
     CREATIVE_TIMEOUT = 120.0  # Timeout for LLM response (seconds)
 
-    # Dubbing mode settings (Qwen3-TTS high-fidelity)
+    # Dubbing mode settings (Qwen3-TTS/MLX-Audio high-fidelity)
     DUBBING_CHUNK_SIZE = 256  # Process script in chunks
     DUBBING_TIMEOUT = 60.0  # Timeout for TTS generation
-    DUBBING_LANGUAGE = os.getenv("DUBBING_LANGUAGE", "english")  # Default language for TTS
+    DUBBING_LANGUAGE = os.getenv("DUBBING_LANGUAGE", "")  # Default language for TTS (empty = auto-detect)
     SUPPORTED_LANGUAGES = [
         "english",
         "chinese",
@@ -242,7 +251,13 @@ class Config:
         print(f"  Ollama: {cls.model.OLLAMA_HOST}")
 
         print("\nModel Status:")
-        for model in ["qwen3-tts", "personaplex", "silero-vad", "whisper"]:
+        models_to_check = ["qwen3-tts", "personaplex", "silero-vad", "whisper"]
+        # Add MacEcho models on macOS
+        import sys
+
+        if sys.platform == "darwin":
+            models_to_check.append("macecho")
+        for model in models_to_check:
             status = (
                 "[OK] Downloaded"
                 if cls.model.is_model_downloaded(model)

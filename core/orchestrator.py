@@ -3,25 +3,28 @@ Local Voice Orchestrator - Three-Mode Architecture
 
 Velloris achieves versatile voice AI through three specialized modes:
 
-1. Real-Time Mode: PersonaPlex-7B (end-to-end S2S)
+1. Real-Time Mode: End-to-end S2S (platform-specific)
+   * macOS: MacEcho-7B (MLX-optimized, 16kHz)
+   * Other: PersonaPlex-7B (NVIDIA GPU, 24kHz)
    * Input: User audio
-   * Output: Agent audio response (70-170ms latency)
+   * Output: Agent audio response (70-300ms latency)
    * Features: Full-duplex, interruptions, 16 voices, persona control
    * Best for: Interactive conversations, customer service, tutoring
 
-2. Dubbing Mode: Qwen3-TTS (high-fidelity synthesis)
+2. Dubbing Mode: Qwen3-TTS/MLX-Audio (high-fidelity synthesis)
    * Input: Script text
    * Output: Professional-quality audio
    * Features: 10 languages, emotion control, voice cloning, voice design
    * Best for: Content creation, narration, audiobooks, multilingual
 
-3. Creative Mode: Ollama LLM + Qwen3-TTS (emotional synthesis)
+3. Creative Mode: Ollama LLM + TTS (emotional synthesis)
    * Input: User text
    * Output: Emotionally expressive audio
    * Features: LLM reasoning, emotion control, multilingual
    * Best for: Storytelling, creative content, brainstorming
 
 Manages engine lifecycle with lazy loading for memory efficiency.
+Platform-aware: Automatically selects optimal engines (S2S, TTS) per platform.
 """
 
 import numpy as np
@@ -29,9 +32,14 @@ from typing import Optional, Tuple
 from pathlib import Path
 import sys
 
-from engines.personaplex import PersonaPlexEngine
 from config import Config
 from utils.device_utils import get_optimal_device, get_platform_info
+
+# Conditional import for S2S engine based on platform
+if sys.platform == "darwin":
+    from engines.macecho_s2s import MacEchoEngine as S2SEngine
+else:
+    from engines.personaplex import PersonaPlexEngine as S2SEngine
 
 # Conditional import for TTS engine based on platform
 if sys.platform == "darwin":
@@ -45,7 +53,7 @@ class LocalVoiceOrchestrator:
     Orchestrates voice processing across three specialized modes.
 
     Modes:
-    - realtime: PersonaPlex end-to-end S2S (no LLM needed)
+    - realtime: End-to-end S2S (MacEcho on macOS, PersonaPlex on other platforms)
     - dubbing: Qwen3-TTS/MLX-TTS high-fidelity synthesis
     - creative: Ollama + Qwen3-TTS/MLX-TTS (emotional content)
 
@@ -69,7 +77,7 @@ class LocalVoiceOrchestrator:
         self.platform_info = get_platform_info()
 
         # Engine instances (lazy-loaded)
-        self.personaplex_engine: Optional[PersonaPlexEngine] = None
+        self.s2s_engine: Optional[S2SEngine] = None
         self.tts_engine: Optional[TTSEngine] = None
         self.ollama_brain = None  # Lazy-loaded for creative mode
 
@@ -77,26 +85,29 @@ class LocalVoiceOrchestrator:
         print(
             f"   Platform: {self.platform_info['os']} ({self.platform_info['machine']})"
         )
+        s2s_backend = "MacEcho-7B (MLX)" if sys.platform == "darwin" else "PersonaPlex-7B (NVIDIA)"
         tts_backend = "MLX-Audio" if sys.platform == "darwin" else "Qwen3-TTS"
+        print(f"   S2S Backend: {s2s_backend}")
         print(f"   TTS Backend: {tts_backend}")
         print("   Modes available:")
-        print("     • realtime: PersonaPlex-7B (end-to-end S2S, no LLM)")
+        print(f"     • realtime: {s2s_backend} (end-to-end S2S, no LLM)")
         print(f"     • dubbing: {tts_backend} (high-fidelity narration)")
         print(
             f"     • creative: {self.llm_model} + {tts_backend} (emotional synthesis)"
         )
 
-    def _load_personaplex(self):
-        """Lazy-load PersonaPlex engine if not already loaded."""
-        if self.personaplex_engine is not None:
+    def _load_s2s_engine(self):
+        """Lazy-load the appropriate S2S engine for the platform."""
+        if self.s2s_engine is not None:
             return
 
-        print("\n[LOAD] Loading PersonaPlex engine for realtime mode...")
+        s2s_backend = "MacEcho" if sys.platform == "darwin" else "PersonaPlex"
+        print(f"\n[LOAD] Loading {s2s_backend} engine for realtime mode...")
         try:
-            self.personaplex_engine = PersonaPlexEngine(device=self.device)
-            print("[OK] PersonaPlex ready")
+            self.s2s_engine = S2SEngine(device=self.device)
+            print(f"[OK] {s2s_backend} ready")
         except Exception as e:
-            print(f"[X] Failed to load PersonaPlex: {e}")
+            print(f"[X] Failed to load {s2s_backend}: {e}")
 
     def _load_tts_engine(self):
         """Lazy-load the appropriate TTS engine for the platform."""
@@ -134,9 +145,9 @@ class LocalVoiceOrchestrator:
 
     def unload_engines(self):
         """Unload all engines to free memory."""
-        if self.personaplex_engine is not None:
-            self.personaplex_engine.unload()
-            self.personaplex_engine = None
+        if self.s2s_engine is not None:
+            self.s2s_engine.unload()
+            self.s2s_engine = None
 
         if self.tts_engine is not None:
             self.tts_engine.unload()
@@ -163,7 +174,7 @@ class LocalVoiceOrchestrator:
 
         Args:
             mode: Operating mode
-                - 'realtime': PersonaPlex end-to-end S2S (requires audio_input)
+                - 'realtime': End-to-end S2S (MacEcho on macOS, PersonaPlex elsewhere) (requires audio_input)
                 - 'dubbing': Qwen3-TTS/MLX-TTS high-fidelity narration (requires text)
                 - 'creative': Ollama + Qwen3-TTS/MLX-TTS emotional synthesis (requires text)
             text: Input text (for dubbing/creative modes)
@@ -228,9 +239,13 @@ class LocalVoiceOrchestrator:
         text_prompt: Optional[str] = None,
     ) -> Optional[Tuple[np.ndarray, int]]:
         """
-        Handle real-time mode: PersonaPlex end-to-end S2S.
+        Handle real-time mode: End-to-end S2S (platform-specific).
 
-        PersonaPlex does EVERYTHING:
+        S2S Engine (platform-dependent):
+        - macOS: MacEcho (MLX-optimized speech-to-speech)
+        - Other: PersonaPlex (NVIDIA speech-to-speech)
+
+        Both handle the complete pipeline:
         - Listens to user speech
         - Understands meaning
         - Generates intelligent response
@@ -246,18 +261,20 @@ class LocalVoiceOrchestrator:
         Returns:
             Tuple of (agent_audio, sample_rate) or None
         """
-        self._load_personaplex()
+        self._load_s2s_engine()
 
-        if self.personaplex_engine is None:
-            print("[X] PersonaPlex engine not available")
+        if self.s2s_engine is None:
+            s2s_backend = "MacEcho" if sys.platform == "darwin" else "PersonaPlex"
+            print(f"[X] {s2s_backend} engine not available")
             return None
 
-        print("\n🎯 [REALTIME MODE] PersonaPlex end-to-end S2S")
+        s2s_backend = "MacEcho" if sys.platform == "darwin" else "PersonaPlex"
+        print(f"\n🎯 [REALTIME MODE] {s2s_backend} end-to-end S2S")
         print(f"   Input: {len(audio_input)/24000:.2f}s of user audio")
 
         try:
-            # PersonaPlex handles the complete S2S pipeline
-            result = self.personaplex_engine.generate_s2s_response(
+            # S2S engine handles the complete pipeline
+            result = self.s2s_engine.generate_s2s_response(
                 audio=audio_input,
                 sr=24000,
                 voice_prompt=voice_prompt,
@@ -336,7 +353,7 @@ class LocalVoiceOrchestrator:
                 text=response_text,
                 ref_audio_path=ref_audio_path,
                 language=Config.app.DUBBING_LANGUAGE,
-                speaker="serena",
+                speaker="Aiden",  # CosyVoice speaker: Aiden, Chelsie, Ethan, Vivian, etc.
                 instruct=emotion,
             )
 
@@ -395,7 +412,7 @@ class LocalVoiceOrchestrator:
                 text=text,
                 ref_audio_path=ref_audio_path,
                 language=Config.app.DUBBING_LANGUAGE,
-                speaker="serena",
+                speaker="Aiden",  # CosyVoice speaker: Aiden, Chelsie, Ethan, Vivian, etc.
             )
 
             if result:

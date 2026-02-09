@@ -1,0 +1,25 @@
+# MacEcho Speech-to-Speech Engine for macOS
+# Install with: pip install -r requirements-macecho.txt
+#
+# This file contains dependencies for MacEcho, a real-time conversational AI engine
+# optimized for Apple Silicon (M1/M2/M3/M4) using MLX framework.
+#
+# Platform: macOS 12+ with Apple Silicon GPU
+# Python: 3.12+
+
+# MacEcho core - real-time speech-to-speech
+git+https://github.com/realtime-ai/mac-echo.git
+
+# MLX framework - Apple Silicon GPU optimization
+mlx>=0.18.0
+mlx-lm>=0.18.0
+
+# Audio I/O
+pyaudio>=0.2.14
+soundfile>=0.12.1
+
+# Speech recognition (SenseVoice ASR)
+funasr>=1.0.0
+
+# Text-to-speech (CosyVoice TTS)
+cosyvoice>=0.1.0
