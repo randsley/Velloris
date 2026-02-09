@@ -108,14 +108,16 @@ Velloris/
 │   └── orchestrator.py     # Engine routing & lazy loading
 ├── engines/                # Voice Models
 │   ├── personaplex.py      # NVIDIA PersonaPlex-7B (S2S)
-│   └── qwen_tts.py         # Alibaba Qwen3-TTS (TTS)
+│   ├── qwen_tts.py         # Alibaba Qwen3-TTS (TTS)
+│   └── mlx_tts.py          # MLX-Audio for Apple Silicon
 ├── utils/                  # Utilities
 │   ├── audio_io.py         # Audio playback & recording
 │   ├── audio_utils.py      # Resampling & normalization
 │   ├── device_utils.py     # Device detection (CUDA/MPS/CPU)
 │   └── vad_handler.py      # Voice Activity Detection
-├── tests/                  # Test Suite (17 tests)
-│   └── test_pipeline.py    # Integration tests
+├── tests/                  # Test Suite (46 tests)
+│   ├── test_pipeline.py    # Integration tests
+│   └── test_critical_paths.py  # Critical path & platform tests
 ├── config.py               # Configuration
 ├── main.py                 # CLI Application
 ├── requirements.txt        # Python Dependencies
@@ -308,7 +310,7 @@ Ollama: ✅ Required
 - **Installation**: Run `./install_macos.sh`
 - **Device Selection**: `--device mps` (auto-selected)
 - **Note**: PersonaPlex runs slower on MPS; Qwen3-TTS works well
-- **Research**: Exploring [MLX Stack](https://ml-explore.github.io/mlx/) (Apple's ML framework) for optimized M-series inference. Could provide 2-3x speedup vs PyTorch MPS.
+- **MLX-Audio**: Native [MLX](https://ml-explore.github.io/mlx/) backend for optimized TTS on Apple Silicon with RMS normalization, chunk validation, and model caching
 
 ### Linux (CPU/CUDA)
 - **CPU Mode**: Works on any Linux
@@ -324,14 +326,17 @@ Ollama: ✅ Required
 Run the test suite:
 
 ```bash
-# All 17 tests
+# All 46 tests
+pytest tests/test_pipeline.py tests/test_critical_paths.py -v
+
+# Original integration tests only
 pytest tests/test_pipeline.py -v
 
-# Specific test
-pytest tests/test_pipeline.py::TestOrchestrator -v
+# Critical path & platform tests only
+pytest tests/test_critical_paths.py -v
 
 # With coverage
-pytest tests/test_pipeline.py --cov=. -v
+pytest tests/test_pipeline.py tests/test_critical_paths.py --cov=. -v
 ```
 
 **Note**: Tests pass without models installed (stub mode).
@@ -370,7 +375,7 @@ pytest tests/test_pipeline.py --cov=. -v
 
 ## 🚀 What's Next?
 
-- [ ] **MLX Stack Integration** (macOS): Research & implement MLX for 2-3x speedup on M-series Macs
+- [x] **MLX-Audio Integration** (macOS): Native MLX backend for Apple Silicon TTS
 - [ ] Web UI with Gradio
 - [ ] ONNX export for edge deployment
 - [ ] Mobile optimization (iOS/Android)
