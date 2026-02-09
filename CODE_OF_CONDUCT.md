@@ -1,133 +1,168 @@
-# Contributor Covenant Code of Conduct
+# Velloris Code of Conduct
 
 ## Our Pledge
 
-We as members, contributors, and leaders pledge to make participation in our
-community a harassment-free experience for everyone, regardless of age, body
-size, visible or invisible disability, ethnicity, sex characteristics, gender
-identity and expression, level of experience, education, socio-economic status,
-nationality, personal appearance, race, caste, color, religion, or sexual
-identity and orientation.
+We as members, contributors, and maintainers of the Velloris project pledge to make participation in this project a harassment-free experience for everyone, regardless of age, body size, visible or invisible disability, ethnicity, sex characteristics, gender identity and expression, level of experience, education, socio-economic status, nationality, personal appearance, race, caste, colour, religion, or sexual identity and orientation.
 
-We pledge to act and interact in ways that contribute to an open, welcoming,
-diverse, inclusive, and healthy community.
+We pledge to act and interact in ways that contribute to an open, welcoming, diverse, inclusive, and healthy project environment.
 
 ## Our Standards
 
-Examples of behavior that contributes to a positive environment for our
-community include:
+Examples of behaviour that contributes to a positive environment for the Velloris project include:
 
 *   Demonstrating empathy and kindness toward other people
 *   Being respectful of differing opinions, viewpoints, and experiences
 *   Giving and gracefully accepting constructive feedback
-*   Accepting responsibility and apologizing to those affected by our mistakes,
-    and learning from the experience
-*   Focusing on what is best not just for us as individuals, but for the
-    overall community
+*   Accepting responsibility and apologising to those affected by our mistakes, and learning from the experience
+*   Focusing on what is best not just for us as individuals, but for the overall project and its users
 
-Examples of unacceptable behavior include:
+Examples of unacceptable behaviour include:
 
-*   The use of sexualized language or imagery, and sexual attention or
-    advances of any kind
-*   Trolling, insulting or derogatory comments, and personal or political
-    attacks
+*   The use of sexualised language or imagery, and sexual attention or advances of any kind
+*   Trolling, insulting or derogatory comments, and personal or political attacks
 *   Public or private harassment
-*   Publishing others' private information, such as a physical or email
-    address, without their explicit permission
-*   Other conduct which could reasonably be considered inappropriate in a
-    professional setting
+*   Publishing others' private information, such as a physical or email address, without their explicit permission
+*   Other conduct which could reasonably be considered inappropriate in a professional setting
 
 ## Enforcement Responsibilities
 
-Community leaders are responsible for clarifying and enforcing our standards of
-acceptable behavior and will take appropriate and fair corrective action in
-response to any behavior that they deem inappropriate, threatening, offensive,
-or harmful.
+Velloris project maintainers are responsible for clarifying and enforcing our standards of acceptable behaviour and will take appropriate and fair corrective action in response to any behaviour that they deem inappropriate, threatening, offensive, or harmful.
 
-Community leaders have the right and responsibility to remove, edit, or reject
-comments, commits, code, wiki edits, issues, and other contributions that are
-not aligned to this Code of Conduct, and will communicate reasons for moderation
-decisions when appropriate.
+Project maintainers have the right and responsibility to remove, edit, or reject comments, commits, code, wiki edits, issues, and other contributions that are not aligned to this Code of Conduct, and will communicate reasons for moderation decisions when appropriate.
 
 ## Scope
 
-This Code of Conduct applies within all community spaces, and also applies when
-an individual is officially representing the community in public spaces.
-Examples of representing our community include using an official e-mail address,
-posting via an official social media account, or acting as an appointed
-representative at an online or offline event.
+This Code of Conduct applies within all Velloris project spaces, including the GitHub repository, issue tracker, pull requests, discussions, and any other channels managed by the project. It also applies when an individual is officially representing the Velloris project in public spaces, such as using an official e-mail address, posting via an official social media account, or acting as an appointed representative at an online or offline event.
 
-## Use of Artificial Intelligence
+---
 
-This project may involve the use of artificial intelligence models and technologies. We are committed to the responsible and ethical use of AI. As such, we aim to adhere to the principles outlined in the [EU AI Act](https://artificialintelligenceact.eu/), including:
+## Responsible Use of Artificial Intelligence
 
-*   **Transparency:** We will be transparent about the use of AI in this project, including the models and data used.
-*   **Fairness:** We will strive to ensure that our use of AI is fair and does not create or reinforce harmful biases.
-*   **Accountability:** We will take responsibility for the outcomes of our AI systems and will work to mitigate any negative impacts.
+Velloris is a voice AI system capable of generating synthetic speech, cloning voices, and producing AI-generated audio content. These capabilities carry ethical and legal responsibilities. All contributors, deployers, and users of Velloris must adhere to the principles set out in this section.
 
-We encourage all contributors to be mindful of these principles when working with AI in this project.
+### EU AI Act Compliance (Regulation (EU) 2024/1689)
+
+Velloris is developed in accordance with the [EU AI Act](https://artificialintelligenceact.eu/), which establishes harmonised rules for the development, placement on the market, and use of AI systems within the European Union. The following obligations apply.
+
+#### Risk Classification
+
+Velloris is classified as a **limited-risk AI system** under the EU AI Act. It is not a high-risk system (it does not fall within Annex III use cases such as biometric identification, law enforcement, or critical infrastructure), but it is subject to **transparency obligations under Article 50** because it generates synthetic audio content.
+
+#### Article 50 Transparency Obligations
+
+As a provider of an AI system that generates synthetic audio content, the Velloris project and its deployers must comply with the following:
+
+1.  **Machine-readable marking.** All audio output generated by Velloris must be marked in a machine-readable format and be detectable as artificially generated or manipulated. Technical solutions must be effective, interoperable, robust, and reliable as far as technically feasible, taking into account the state of the art and costs of implementation (Article 50(2)).
+
+2.  **Deepfake disclosure.** Deployers who use Velloris to generate or manipulate audio content that constitutes a deepfake (i.e. content that resembles existing persons, objects, places, or events and would falsely appear to be authentic) must disclose that the content has been artificially generated or manipulated (Article 50(4)).
+
+3.  **Creative and artistic exception.** Where Velloris is used for manifestly artistic, creative, satirical, or fictional purposes, the transparency obligation is limited to disclosing the existence of AI-generated content in an appropriate manner that does not hamper the display or enjoyment of the work (Article 50(4)).
+
+4.  **Public interest text.** Where AI-generated text (e.g. from creative mode) is published to inform the public on matters of public interest, the artificial origin must be disclosed unless the content has undergone human review or editorial control with clear editorial responsibility assigned (Article 50(4)).
+
+#### Contributor Obligations
+
+All contributors to Velloris must:
+
+*   **Implement and maintain synthetic content marking.** Any changes to audio generation pipelines must preserve or implement machine-readable watermarking or metadata marking of AI-generated audio output.
+*   **Document AI capabilities transparently.** New features involving synthetic content generation must be clearly documented, including their capabilities and limitations.
+*   **Consider misuse potential.** When proposing or implementing new features (especially voice cloning, emotion manipulation, or identity-mimicking capabilities), contributors must assess and document the potential for misuse and propose appropriate safeguards.
+
+#### Deployer Obligations
+
+Anyone deploying Velloris (using it to generate audio for distribution or interaction) must:
+
+*   Clearly inform end users when they are interacting with or listening to AI-generated audio content.
+*   Not use Velloris to create content that impersonates real individuals without their explicit, informed consent.
+*   Not use Velloris to generate misleading content presented as authentic human speech in contexts where the distinction matters (e.g. news, legal proceedings, financial communications).
+*   Comply with all applicable provisions of Article 50 of the EU AI Act regarding transparency and disclosure.
+
+### General-Purpose AI (GPAI) Model Provisions
+
+Velloris integrates pre-trained GPAI models (PersonaPlex-7B, Qwen3-TTS) but does not itself train or provide these models. The GPAI obligations under the EU AI Act (Articles 51-56) fall on the upstream model providers (NVIDIA, Alibaba Qwen), not on Velloris as a downstream deployer. However, Velloris commits to:
+
+*   Maintaining clear documentation of which GPAI models are used and their known limitations.
+*   Passing through any usage restrictions or licence conditions imposed by upstream model providers.
+*   Not circumventing safety measures or guardrails implemented by upstream model providers.
+
+The open-source exemption for GPAI providers (which reduces documentation obligations for models released under open-source licences whose weights, architecture, and usage information are publicly available) applies to the upstream models Velloris uses, not to Velloris itself.
+
+### Data Protection and GDPR Compliance (Regulation (EU) 2016/679)
+
+Voice data can constitute biometric data and personal data under the General Data Protection Regulation (GDPR). The following principles apply to Velloris and its users:
+
+1.  **Voice as personal data.** A person's voice is personal data under Article 4(1) GDPR. When processed through voice recognition or cloning systems for the purpose of uniquely identifying a natural person, it becomes **special category (biometric) data** under Article 9 GDPR, the processing of which is prohibited except under specific legal bases.
+
+2.  **Consent for voice cloning.** Voice cloning features in Velloris must only be used with the **explicit, informed consent** of the person whose voice is being cloned, in accordance with Article 9(2)(a) GDPR. This consent must be freely given, specific, informed, and unambiguous.
+
+3.  **Data Protection Impact Assessment (DPIA).** Deployers using Velloris voice cloning capabilities in a manner likely to result in a high risk to the rights and freedoms of individuals should conduct a DPIA in accordance with Article 35 GDPR.
+
+4.  **Data minimisation.** Voice reference audio used for cloning should be retained only for as long as necessary for the stated purpose and should not be repurposed without additional consent.
+
+5.  **Local-first architecture.** Velloris processes all audio data locally on-device with no cloud dependency. This design choice supports data protection by default and by design (Article 25 GDPR), as voice data is not transmitted to external servers.
+
+### Prohibited Uses
+
+The following uses of Velloris are strictly prohibited and constitute violations of this Code of Conduct:
+
+*   **Impersonation without consent.** Using voice cloning to impersonate a real person without their explicit, informed consent.
+*   **Fraud and deception.** Using synthetic speech to deceive, defraud, or manipulate individuals (e.g. vishing, social engineering, financial fraud).
+*   **Non-consensual intimate content.** Generating synthetic audio of a sexual or intimate nature involving real persons without their consent.
+*   **Disinformation.** Creating synthetic audio designed to mislead the public, manipulate elections, or undermine democratic processes.
+*   **Prohibited AI practices.** Any use that falls within the prohibited practices defined in Article 5 of the EU AI Act, including subliminal manipulation, exploitation of vulnerabilities, social scoring, or real-time remote biometric identification in publicly accessible spaces (except where legally authorised).
+*   **Circumventing safety measures.** Attempting to bypass, disable, or remove synthetic content watermarking or marking mechanisms.
+*   **Unlawful surveillance.** Using Velloris voice activity detection or speech recognition capabilities for unlawful surveillance of individuals.
+
+---
 
 ## Enforcement
 
-Instances of abusive, harassing, or otherwise unacceptable behavior may be
-reported to the community leaders responsible for enforcement at
-[INSERT EMAIL ADDRESS].
-All complaints will be reviewed and investigated promptly and fairly.
+Instances of abusive, harassing, or otherwise unacceptable behaviour, including violations of the Responsible Use provisions above, may be reported to the Velloris project maintainers at [INSERT EMAIL ADDRESS]. All complaints will be reviewed and investigated promptly and fairly.
 
-All community leaders are obligated to respect the privacy and security of the
-reporter of any incident.
+All project maintainers are obligated to respect the privacy and security of the reporter of any incident.
 
 ## Enforcement Guidelines
 
-Community leaders will follow these Community Impact Guidelines in determining
-the consequences for any action they deem in violation of this Code of Conduct:
+Project maintainers will follow these guidelines in determining the consequences for any action they deem in violation of this Code of Conduct:
 
 ### 1. Correction
 
-**Community Impact**: Use of inappropriate language or other behavior deemed
-unprofessional or unwelcome in the community.
+**Project Impact**: Use of inappropriate language or other behaviour deemed unprofessional or unwelcome in the project.
 
-**Consequence**: A private, written warning from community leaders, providing
-clarity around the nature of the violation and an explanation of why the
-behavior was inappropriate. A public apology may be requested.
+**Consequence**: A private, written warning from project maintainers, providing clarity around the nature of the violation and an explanation of why the behaviour was inappropriate. A public apology may be requested.
 
 ### 2. Warning
 
-**Community Impact**: A violation through a single incident or a series
-of actions.
+**Project Impact**: A violation through a single incident or a series of actions.
 
-**Consequence**: A warning with consequences for continued behavior. No
-interaction with the people involved, including unsolicited interaction with
-those enforcing the Code of Conduct, for a specified period of time. This
-includes avoiding interactions in community spaces as well as external channels
-like social media. Violating these terms may lead to a temporary or permanent
-ban.
+**Consequence**: A warning with consequences for continued behaviour. No interaction with the people involved, including unsolicited interaction with those enforcing the Code of Conduct, for a specified period of time. This includes avoiding interactions in project spaces as well as external channels like social media. Violating these terms may lead to a temporary or permanent ban.
 
 ### 3. Temporary Ban
 
-**Community Impact**: A serious violation of community standards, including
-sustained inappropriate behavior.
+**Project Impact**: A serious violation of project standards, including sustained inappropriate behaviour or a violation of the Responsible Use provisions.
 
-**Consequence**: A temporary ban from any sort of interaction or public
-communication with the community for a specified period of time. No public or
-private interaction with the people involved, including unsolicited interaction
-with those enforcing the Code of Conduct, is allowed during this period.
-Violating these terms may lead to a permanent ban.
+**Consequence**: A temporary ban from any sort of interaction or public communication within the Velloris project for a specified period of time. No public or private interaction with the people involved, including unsolicited interaction with those enforcing the Code of Conduct, is allowed during this period. Violating these terms may lead to a permanent ban.
 
 ### 4. Permanent Ban
 
-**Community Impact**: Demonstrating a pattern of violation of community
-standards, including sustained inappropriate behavior, harassment of an
-individual, or aggression toward or disparagement of classes of individuals.
+**Project Impact**: Demonstrating a pattern of violation of project standards, including sustained inappropriate behaviour, harassment of an individual, aggression toward or disparagement of classes of individuals, or deliberate misuse of the AI capabilities in violation of the Prohibited Uses section.
 
-**Consequence**: A permanent ban from any sort of public interaction within the
-community.
+**Consequence**: A permanent ban from any sort of public interaction within the Velloris project.
+
+---
+
+## Legal References
+
+*   **EU AI Act** — Regulation (EU) 2024/1689 of the European Parliament and of the Council of 13 June 2024 laying down harmonised rules on artificial intelligence. [Full text](https://artificialintelligenceact.eu/).
+*   **GDPR** — Regulation (EU) 2016/679 of the European Parliament and of the Council of 27 April 2016 on the protection of natural persons with regard to the processing of personal data. [Full text](https://gdpr-info.eu/).
+*   **Article 50 (Transparency)** — [Article 50 of the EU AI Act](https://artificialintelligenceact.eu/article/50/).
+*   **EU Code of Practice on AI-Generated Content** — [Marking and labelling of AI-generated content](https://digital-strategy.ec.europa.eu/en/policies/code-practice-ai-generated-content).
+*   **EDPB Guidelines on Virtual Voice Assistants** — [Guidelines 02/2021](https://www.edpb.europa.eu/system/files/2021-07/edpb_guidelines_202102_on_vva_v2.0_adopted_en.pdf).
 
 ## Attribution
 
-This Code of Conduct is adapted from the [Contributor Covenant][homepage],
-version 2.1, available at
-[https://www.contributor-covenant.org/version/2/1/code_of_conduct.html][v2.1].
+This Code of Conduct is adapted from the [Contributor Covenant](https://www.contributor-covenant.org), version 2.1, available at [https://www.contributor-covenant.org/version/2/1/code_of_conduct.html](https://www.contributor-covenant.org/version/2/1/code_of_conduct.html). The Responsible Use of Artificial Intelligence section is original to the Velloris project and incorporates requirements from the EU AI Act and GDPR.
 
-[homepage]: https://www.contributor-covenant.org
-[v2.1]: https://www.contributor-covenant.org/version/2/1/code_of_conduct.html
+---
+
+**Last updated:** February 2026
