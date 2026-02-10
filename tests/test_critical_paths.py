@@ -602,20 +602,22 @@ class TestRefAudioValidation:
 class TestModelCaching:
     """Test model caching across instances."""
 
+    @pytest.mark.skipif(sys.platform != "darwin", reason="MLX is macOS-only")
     def test_model_loaded_once(self):
-        """Verify same model is only loaded from disk once."""
+        """Verify same model is only loaded from disk once (macOS only)."""
         from engines.mlx_tts import MLXTTSEngine
 
         # Clear cache
         MLXTTSEngine._model_cache.clear()
 
         mock_model = Mock()
-        with patch("engines.mlx_tts.load_model", return_value=mock_model) as mock_load:
+        # Patch at the source where load_model is imported from
+        with patch("mlx_audio.tts.utils.load_model", return_value=mock_model) as mock_load:
             with patch("engines.mlx_tts.HAS_MLX_AUDIO", True):
                 e1 = MLXTTSEngine(model_name="test-model")
                 e2 = MLXTTSEngine(model_name="test-model")
 
-                # load_model should only be called once
+                # load_model should only be called once (caching works)
                 mock_load.assert_called_once()
                 assert e1.model is e2.model
 
