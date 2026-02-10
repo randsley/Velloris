@@ -2,12 +2,12 @@
 
 ## Vision Statement
 
-**"Velloris delivers versatile voice AI through three specialized modes: ultra-low latency conversations (PersonaPlex-7B end-to-end S2S), professional-quality narration (Qwen3-TTS), and creative emotional synthesis (Ollama + Qwen3-TTS)—all running locally without the cloud."**
+**"Velloris delivers versatile voice AI through three specialized modes: production-ready creative synthesis (Ollama + MLX-Audio TTS), professional-quality narration (MLX-Audio TTS), and infrastructure-ready realtime conversations (targeting 70-170ms on CUDA systems)—all running locally without the cloud."**
 
-Velloris v2.0 is a local-first three-mode voice agent system that properly utilizes state-of-the-art models:
-- **PersonaPlex-7B** for end-to-end speech-to-speech conversations (70-170ms latency)
-- **Qwen3-TTS** for high-fidelity voice synthesis (10 languages, emotion control)
-- **Ollama** for flexible LLM reasoning (optional, creative mode only)
+Velloris v2.0 is a local-first three-mode voice agent system:
+- **Creative Mode** (✅ Production): Ollama LLM + MLX-Audio TTS for emotional synthesis (user-verified quality)
+- **Dubbing Mode** (✅ Production): MLX-Audio TTS for high-fidelity narration (10 languages, voice cloning)
+- **Realtime Mode** (🔧 Infrastructure): Complete audio pipeline with 99 tests; targeting PersonaPlex-7B for CUDA (70-170ms) and MacEcho for macOS (future)
 
 ## Architecture Overview (v2.0)
 
@@ -23,72 +23,101 @@ Velloris v2.0 is a local-first three-mode voice agent system that properly utili
    ┌─────────┐     ┌─────────┐     ┌─────────┐
    │Realtime │     │ Dubbing │     │Creative │
    │  Mode   │     │  Mode   │     │  Mode   │
+   │🔧 Infra │     │✅ Prod  │     │✅ Prod  │
    └────┬────┘     └────┬────┘     └────┬────┘
         │               │               │
         ▼               ▼               ▼
-┌──────────────┐  ┌──────────┐  ┌─────────────────┐
-│PersonaPlex-7B│  │Qwen3-TTS │  │ Ollama + Qwen3  │
-│(NVIDIA)      │  │(Alibaba) │  │ LLM + TTS       │
-│              │  │          │  │                 │
-│Audio→Audio   │  │Text→Audio│  │Text→LLM→Audio   │
-│(24kHz)       │  │(12kHz)   │  │(12kHz)          │
-│              │  │          │  │                 │
-│•End-to-end S2S│ │•Voice    │  │•LLM Reasoning   │
-│•Full-duplex  │  │ Design   │  │•Emotion Control │
-│•70-170ms     │  │•10 langs │  │•Creative Output │
-│•16 Voices    │  │•Cloning  │  │•Multilingual    │
-│•No LLM needed│  │•No LLM   │  │•Requires Ollama │
-└──────────────┘  └──────────┘  └─────────────────┘
+┌──────────────────┐  ┌──────────────┐  ┌─────────────────┐
+│Audio Pipeline    │  │MLX-Audio TTS │  │Ollama + MLX-TTS │
+│✅ Complete (99   │  │              │  │                 │
+│   tests passing) │  │Text→Audio    │  │Text→LLM→Audio   │
+│                  │  │(24kHz)       │  │(24kHz)          │
+│S2S Engines:      │  │              │  │                 │
+│⚠️ PersonaPlex    │  │•Voice Design │  │•LLM Reasoning   │
+│  (CUDA target)   │  │•10 languages │  │•Emotion Control │
+│⚠️ MacEcho        │  │•Voice Clone  │  │•Creative Output │
+│  (macOS future)  │  │•CLI subprocess│ │•User-verified   │
+│                  │  │•User-verified│  │•Requires Ollama │
+└──────────────────┘  └──────────────┘  └─────────────────┘
+
+Target Features (PersonaPlex on CUDA):
+• End-to-end S2S       • Full-duplex conversations
+• 70-170ms latency     • 16 voice options
+• No LLM needed        • NVIDIA GPU required
 ```
 
 ## Three-Mode Architecture
 
 ### Mode Comparison Table
 
-| Feature | Real-Time | Dubbing | Creative |
-|---------|-----------|---------|----------|
-| **Engine** | PersonaPlex-7B | Qwen3-TTS | Ollama + Qwen3-TTS |
-| **Latency** | **70-170ms** ⚡ | N/A | 1-3s |
-| **Full-Duplex** | **✅ Yes** | ❌ No | ❌ No |
-| **Interruption** | **✅ 95%** success | ❌ No | ❌ No |
-| **Languages** | English only | **10 languages** | **10 languages** |
-| **Voice Options** | 16 preset | **Unlimited** | **Unlimited** |
-| **Emotion Control** | Limited | **✅ Yes** | **✅ Yes** |
-| **Voice Cloning** | ✅ Yes | **✅ Yes** | **✅ Yes** |
+| Feature | Realtime | Dubbing | Creative |
+|---------|----------|---------|----------|
+| **Status** | **🔧 Infrastructure** | **✅ Production** | **✅ Production** |
+| **Engine** | PersonaPlex-7B (target) | MLX-Audio TTS | Ollama + MLX-Audio TTS |
+| **Latency** | Target: 70-170ms (CUDA) | N/A | 1-3s |
+| **Full-Duplex** | Infrastructure ready | ❌ No | ❌ No |
+| **Interruption** | VAD + callbacks ready | ❌ No | ❌ No |
+| **Languages** | English (target) | **10 languages** | **10 languages** |
+| **Voice Options** | 16 preset (mapped) | **Unlimited** | **Unlimited** |
+| **Emotion Control** | Target feature | **✅ Yes** | **✅ Yes** |
+| **Voice Cloning** | Target feature | **✅ Yes** | **✅ Yes** |
 | **Ollama Required** | **❌ No** | **❌ No** | ✅ Yes |
-| **GPU Required** | ✅ NVIDIA (16GB+) | Recommended | Recommended |
-| **VRAM Usage** | 16GB+ | 6-12GB | 6-12GB (TTS) |
-| **Sample Rate** | 24kHz | 12kHz | 12kHz |
-| **Best For** | Conversations | Narration | Creative content |
+| **GPU Required** | ✅ NVIDIA (16GB+) | Optional | Optional |
+| **VRAM Usage** | Target: 16GB+ | 4-6GB | 4-6GB (TTS) |
+| **Sample Rate** | 24kHz | 24kHz (resampled) | 24kHz (resampled) |
+| **Best For** | Conversations (CUDA) | Narration | Creative content |
+| **Test Coverage** | 99 tests (infrastructure) | User-verified | User-verified |
 
 ### Performance Comparison
 
-#### **Latency Benchmarks**
+#### **Status & Benchmarks**
 
-| Mode | First Response | Steady State | vs Gemini Live |
-|------|----------------|--------------|----------------|
-| **Real-Time** | **70-170ms** | **70-170ms** | **18x faster** |
-| Creative | 1-3s | 1-3s | Similar |
-| Dubbing | N/A | N/A | N/A |
+| Mode | Status | Latency | User Feedback | Test Coverage |
+|------|--------|---------|---------------|---------------|
+| **Realtime** | 🔧 Infrastructure | Target: 70-170ms (CUDA) | Pending S2S engine | 99 tests (98 passing) |
+| **Creative** | ✅ Production | 1-3s | "Perfect audio" ✅ | User-verified |
+| **Dubbing** | ✅ Production | N/A | High-quality ✅ | User-verified |
 
-#### **Quality Metrics**
+#### **Target Performance (Realtime Mode on CUDA)**
 
-| Mode | Naturalness | Speaker Similarity | Content Consistency |
-|------|-------------|-------------------|---------------------|
-| **Real-Time** | 3.90/5.0 (MOS) | 0.65 (WavLM) | N/A (E2E S2S) |
-| Dubbing | 4.16/5.0 (UTMOS) | 0.95 (tokenizer) | 0.77-1.24% WER |
-| Creative | 4.16/5.0 (UTMOS) | 0.95 (tokenizer) | Depends on LLM |
+PersonaPlex-7B targets when installed on Windows/Linux with NVIDIA GPU:
+
+| Metric | Target | Source |
+|--------|--------|--------|
+| Latency | 70-170ms | PersonaPlex paper (arxiv:2407.04952) |
+| Naturalness | 3.90/5.0 MOS | PersonaPlex evaluation |
+| Full-Duplex | Yes | Streaming architecture |
+| Barge-in | 95% success | VAD-based interruption |
+
+**Current Infrastructure:**
+- ✅ Audio I/O (microphone/speaker with sounddevice)
+- ✅ VAD (Silero for interruption detection)
+- ✅ Transcription (MLX-Whisper background worker)
+- ✅ Barge-in (interrupt handling validated)
+- ⚠️ S2S Engine (stub-only, awaiting PersonaPlex/MacEcho)
+
+#### **Production Quality (Creative & Dubbing)**
+
+| Mode | Quality | Notes |
+|------|---------|-------|
+| **Creative** | High | MLX-Audio TTS via CLI subprocess, user-verified |
+| **Dubbing** | High | Voice cloning, emotion control, 10 languages |
 
 ---
 
 ## Mode Selection Guide
 
-### Real-Time Mode (PersonaPlex-7B End-to-End S2S)
+### Realtime Mode (Infrastructure Ready, Target: PersonaPlex-7B/MacEcho)
 
-**Best for:** Interactive voice conversations, customer service, live tutoring, gaming NPCs
+**Status:** 🔧 **Infrastructure Complete** | **Target: Windows/Linux CUDA**
 
-**Input:** User audio + optional persona prompt
+**Best for (when S2S installed):** Interactive voice conversations, customer service, live tutoring, gaming NPCs
+
+#### Current State
+
+**✅ Infrastructure (99 tests passing):**
 ```python
+# Audio pipeline validated end-to-end
 audio = np.array([...], dtype=np.float32)  # 24kHz
 persona = "A helpful AI assistant with a friendly tone"
 
@@ -97,15 +126,33 @@ result = orchestrator.route_request(
     mode="realtime",
     audio_input=audio
 )
+# Returns: (stub_audio, 24000) - Infrastructure validated, S2S stub
 ```
 
-**Process:**
+**Current Process:**
+1. ✅ User audio captured at 24kHz
+2. ✅ VAD detects speech (Silero)
+3. ✅ Background transcription (MLX-Whisper)
+4. ⚠️ S2S engine returns stub response (2s silence)
+5. ✅ Interruption/barge-in handling works correctly
+
+#### Target Implementation (CUDA Systems)
+
+**Requirements:**
+- NVIDIA GPU (Ampere+: RTX 3000/4000, A100, H100)
+- 16GB+ VRAM
+- Windows or Linux
+- PersonaPlex-7B installation
+
+**Target Process (when PersonaPlex installed):**
 1. User audio captured at 24kHz
 2. PersonaPlex-7B understands and generates response simultaneously
-3. Agent audio streamed back in real-time
-4. Supports full-duplex (user can interrupt)
+3. Agent audio streamed back in real-time (70-170ms)
+4. Full-duplex conversations with interruption support
 
 **Output:** Agent audio (24kHz, numpy array)
+
+**macOS Users:** Infrastructure validated. MacEcho integration planned for future release.
 
 ### Dubbing Mode (Qwen3-TTS)
 
@@ -133,78 +180,96 @@ result = orchestrator.route_request(
 
 ## Engine Specifications
 
-### PersonaPlex-7B (Real-Time)
+### PersonaPlex-7B (Target for Realtime Mode)
 
-**Model:** `nvidia/personaplex-7b-v1` (Hugging Face)
+**Status:** 🔧 **Infrastructure Ready** | **Target Engine for CUDA Systems**
 
-**Hardware Requirements:**
-- NVIDIA GPU: Ampere or newer (A100, H100, etc.)
-- OS: Linux (primary), macOS with limitations
+**Current Implementation:**
+- Stub engine in `engines/personaplex.py`
+- Voice mapping complete (16 voices mapped)
+- API compatibility layer ready
+- Returns 2 seconds of silence (infrastructure validation)
+
+**Target Model:** `nvidia/personaplex-7b-v1` (Hugging Face)
+
+**Target Hardware Requirements:**
+- NVIDIA GPU: Ampere or newer (A100, H100, RTX 3000/4000)
+- OS: Windows or Linux (CUDA required)
 - VRAM: 16GB+ recommended
 
-**Installation:**
+**Installation (for production use):**
 ```bash
-# Clone repository
+# 1. Clone PersonaPlex repository
 git clone https://github.com/NVIDIA/personaplex
 
-# Install system dependency
-brew install opus  # macOS
-apt install libopus-dev  # Ubuntu
+# 2. Install system dependency
+# Ubuntu/Debian:
+sudo apt install libopus-dev
 
-# Install Python package
+# 3. Install Python package
 pip install personaplex/moshi/.
 
-# Accept model license and login
+# 4. Accept model license and login
 huggingface-cli login
+
+# 5. Run realtime mode
+python3 main.py --mode realtime --persona "helpful assistant" --voice NATF2
 ```
 
 **Sample Rate:** 24kHz (native)
 
-**Available Voices:**
+**Mapped Voices (ready when PersonaPlex installed):**
 - Natural Female: NATF0, NATF1, NATF2, NATF3
 - Natural Male: NATM0, NATM1, NATM2, NATM3
 - Varied Female: VARF0, VARF1, VARF2, VARF3, VARF4
 - Varied Male: VARM0, VARM1, VARM2, VARM3, VARM4
 
-**Features:**
+**Target Features (when installed):**
 - Full-duplex conversations (simultaneous listening/speaking)
 - Barge-in support (user can interrupt)
 - Voice conditioning (speaker characteristics)
 - Persona control (role, background, scenario)
-- Streaming architecture for low latency
+- Streaming architecture for low latency (70-170ms)
 
-### Qwen3-TTS (Dubbing)
+**Alternative (Production Now):** Use Creative or Dubbing modes for immediate production voice synthesis.
 
-**Model:** Official `qwen-tts>=0.1.0` (PyPI)
+### MLX-Audio TTS (Dubbing & Creative)
 
-**Available Models:**
-- 1.7B-CustomVoice (recommended, voice cloning)
-- 1.7B-Base (baseline)
-- 1.7B-VoiceDesign (natural language voice control)
-- 0.6B-CustomVoice (lightweight, voice cloning)
-- 0.6B-Base (lightweight, baseline)
+**Status:** ✅ **Production Ready** (User-verified quality)
+
+**Implementation:** `engines/mlx_tts.py` using CLI subprocess
+
+**Model:** Qwen3-TTS-12Hz-0.6B-CustomVoice-8bit (via mlx-audio)
 
 **Installation:**
 ```bash
-pip install qwen-tts>=0.1.0 soundfile>=0.12.0
+# macOS (Apple Silicon):
+pip install -r requirements-mac.txt
+pip install mlx-audio soundfile
 
-# Optional: FlashAttention 2 for reduced GPU memory
-pip install flash-attn --no-build-isolation
+# Cross-platform:
+pip install mlx-audio soundfile
 ```
 
-**Sample Rate:** 12kHz (native)
+**Sample Rate:** 12000 Hz (native), resampled to 24000 Hz for output
 
 **Features:**
-- Voice Design via natural language prompts
-- Voice cloning from reference audio
-- Multilingual support (English, Mandarin, etc.)
-- Emotion and style control
-- Multiple model sizes for efficiency
+- ✅ Voice Design via natural language prompts
+- ✅ Voice cloning from reference audio (3-5 second samples)
+- ✅ Multilingual support (10 languages)
+- ✅ Emotion and style control
+- ✅ High-quality output (user-verified: "perfect audio")
 
-**Specifications:**
-- Dtype support: float32, float16, bfloat16 (recommended for CUDA)
-- Optional FlashAttention 2 reduces memory usage
-- Auto device detection (CUDA/CPU/MPS)
+**Implementation Details:**
+- Uses `python3 -m mlx_audio.tts.generate` CLI subprocess
+- Guarantees identical quality to standalone CLI tool
+- Automatic audio file loading via soundfile
+- Output resampled to 24000 Hz for consistency
+
+**Platform Support:**
+- Optimal: macOS with Apple Silicon (MPS)
+- Supported: CUDA, CPU (all platforms)
+- Model: 0.6B-8bit (efficient, high-quality)
 
 ## Data Flow
 
@@ -323,23 +388,39 @@ Velloris operates entirely locally with no cloud dependencies:
 
 ## Performance Characteristics
 
-### PersonaPlex-7B (Real-Time)
+### Realtime Mode Infrastructure
 
-| Metric | Value | Notes |
-|--------|-------|-------|
-| Latency | <200ms | Full-duplex, streaming |
-| VRAM | 12-16GB | With fp16 on A100 |
+| Component | Status | Notes |
+|-----------|--------|-------|
+| Audio I/O | ✅ Complete | sounddevice dual-stream (16kHz input, 24kHz output) |
+| VAD | ✅ Complete | Silero with interruption detection |
+| Transcription | ✅ Complete | MLX-Whisper background worker |
+| Barge-in | ✅ Complete | Interrupt flag + queue clearing |
+| S2S Engine | ⚠️ Stub-only | Awaiting PersonaPlex/MacEcho |
+| Test Coverage | ✅ 99 tests | 98 passing, 1 skipped |
+
+**Target Performance (PersonaPlex-7B on CUDA):**
+| Metric | Target | Requirements |
+|--------|--------|--------------|
+| Latency | 70-170ms | NVIDIA GPU (Ampere+) |
+| VRAM | 12-16GB | fp16 on A100/RTX 3000/4000 |
 | Throughput | Real-time | 1x audio speed |
 | Voices | 16 | Pre-trained options |
 
-### Qwen3-TTS (Dubbing)
+### Production Modes (Creative & Dubbing)
 
+| Mode | Quality | Performance | User Feedback |
+|------|---------|-------------|---------------|
+| **Creative** | High | 1-3s latency | "Perfect audio" ✅ |
+| **Dubbing** | High | 0.5-2x real-time | High-quality ✅ |
+
+**MLX-Audio TTS:**
 | Metric | Value | Notes |
 |--------|-------|-------|
-| Quality | High | Professional narration |
-| Speed | 0.5-2x | Depends on text length |
-| VRAM | 6-12GB | Model size dependent |
-| Voices | 3+ | Voice cloning capable |
+| Quality | High | CLI subprocess (battle-tested) |
+| Sample Rate | 12kHz native | Resampled to 24kHz output |
+| VRAM | 4-6GB | 0.6B-8bit model |
+| Voices | Unlimited | Voice cloning + natural language |
 
 ## Platform Compatibility
 
@@ -440,14 +521,32 @@ python main.py --device cuda  # Will auto-select optimal dtype
 All components tested in stub mode (no models required):
 
 ```bash
-# Run test suite (17 tests)
+# Run all tests (99 total: 98 passing, 1 skipped)
+pytest tests/ -v
+
+# Integration tests (17 tests)
 pytest tests/test_pipeline.py -v
 
-# Real-time mode test
+# Critical path tests (29 tests)
+pytest tests/test_critical_paths.py -v
+
+# Realtime infrastructure (40 tests)
+pytest tests/test_realtime_callbacks.py tests/test_vad_interruption.py tests/test_realtime_e2e.py -v
+
+# Audio utilities (12 tests)
+pytest tests/test_audio_utils.py -v
+```
+
+**Mode Testing:**
+```bash
+# Realtime mode (infrastructure test - stub S2S)
 python main.py --mode realtime --device cpu
 
-# Dubbing mode test
+# Dubbing mode (production - requires MLX-Audio)
 python main.py --mode dubbing --script "Test text"
+
+# Creative mode (production - requires Ollama + MLX-Audio)
+python main.py --mode creative --script "Tell a story" --emotion "excited"
 ```
 
 ## Future Enhancements

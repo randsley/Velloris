@@ -20,19 +20,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [2.0.0] - 2026-02-05
 
-### 🎉 Major Release: Three-Mode Architecture
+### 🎉 Major Release: Three-Mode Architecture + Realtime Infrastructure
 
-This release fixes critical architectural issues and introduces a three-mode system that properly utilizes PersonaPlex-7B.
+This release introduces a three-mode system with production-ready Creative and Dubbing modes, plus complete realtime infrastructure (99 tests).
 
 ### Added
 
 #### Core Features
 - **Three-Mode Architecture**: Realtime, Dubbing, and Creative modes
-  - **Realtime Mode**: PersonaPlex-7B end-to-end S2S (70-170ms latency, full-duplex)
-  - **Dubbing Mode**: Qwen3-TTS high-fidelity narration (10 languages, voice cloning)
-  - **Creative Mode**: Ollama + Qwen3-TTS emotional synthesis (LLM reasoning)
-- **Proper PersonaPlex Usage**: Now uses full S2S pipeline instead of transcription-only
-- **Optional Ollama**: No longer required for basic conversations (only creative mode)
+  - **Realtime Mode**: Complete audio infrastructure (99 tests passing); S2S engines targeting CUDA (PersonaPlex-7B) and macOS (MacEcho)
+  - **Dubbing Mode**: ✅ Production ready - MLX-Audio TTS with high-fidelity narration (10 languages, voice cloning)
+  - **Creative Mode**: ✅ Production ready - Ollama + MLX-Audio TTS emotional synthesis (user-verified quality)
+- **Realtime Infrastructure**: Complete audio pipeline with VAD, interruption, and background transcription
+- **Optional Ollama**: No longer required for dubbing mode (only creative mode)
 - **Mode-Based Routing**: `core/orchestrator.py` intelligently routes requests
 - **Lazy Loading**: Models load only when needed, reducing memory usage
 
@@ -93,10 +93,17 @@ This release fixes critical architectural issues and introduces a three-mode sys
   - Added mode-specific configuration sections
   - Added backward compatibility settings (deprecated)
 
+#### Infrastructure & Testing
+- **99 comprehensive tests** (98 passing, 1 skipped) validating all components
+- **Realtime infrastructure**: Audio I/O, VAD, transcription, interruption handling
+- **40 realtime-specific tests**: Callbacks, VAD, interruption, end-to-end flow
+- **MLX-Audio TTS**: High-quality synthesis via CLI subprocess (user-verified)
+
 #### Performance
-- **10-15x faster latency** in realtime mode (70-170ms vs 2000ms+)
-- **Reduced memory usage** through lazy loading
-- **No Ollama dependency** for realtime and dubbing modes
+- **Lazy loading** reduces memory usage (models load only when needed)
+- **No Ollama dependency** for dubbing mode
+- **Production-ready** creative and dubbing modes (user-verified quality)
+- **Realtime targets**: 70-170ms latency when PersonaPlex installed on CUDA
 
 ### Deprecated
 - `--mode interactive` - Use `--mode realtime` or `--mode creative` instead
@@ -106,10 +113,16 @@ This release fixes critical architectural issues and introduces a three-mode sys
 - `INTERACTIVE_TIMEOUT` config - Use `REALTIME_TIMEOUT` or `CREATIVE_TIMEOUT` instead
 
 ### Fixed
-- **Critical**: PersonaPlex-7B was being misused for transcription only (wasting 95% of capabilities)
-- **Performance**: Removed unnecessary LLM calls in realtime mode
-- **Architecture**: Proper separation of concerns between modes
+- **Architecture**: Implemented complete realtime mode infrastructure
+- **Audio Quality**: MLX-Audio TTS via CLI subprocess resolves quality issues
+- **Testing**: Added 82 new tests (total: 99 tests, 98 passing)
+- **Documentation**: Added REALTIME_INTEGRATION.md with infrastructure details
 - **Error Handling**: Better error messages when Ollama is unavailable
+
+### In Progress
+- **Realtime S2S Engines**: PersonaPlex (CUDA target) and MacEcho (macOS future)
+  - PersonaPlex: Stub implementation, awaiting installation on CUDA systems
+  - MacEcho: Stub implementation, API integration pending
 
 ### Security
 - No security-related changes in this release

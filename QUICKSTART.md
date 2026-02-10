@@ -99,51 +99,105 @@ Application:
 
 Velloris has **three modes**. Pick the one that fits your use case:
 
-| Mode | Best For | Requires Ollama? | Latency |
-|------|----------|-----------------|---------|
-| **Realtime** | Conversations, interactive chat | ❌ No | 70-170ms |
-| **Dubbing** | Narration, audiobooks, videos | ❌ No | N/A |
-| **Creative** | Storytelling, emotional content | ✅ Yes | 1-3s |
+| Mode | Best For | Status | Latency Target |
+|------|----------|--------|----------------|
+| **Realtime** | Conversations, interactive chat | 🔧 Infrastructure Ready | 70-170ms (CUDA) |
+| **Dubbing** | Narration, audiobooks, videos | ✅ Production Ready | N/A |
+| **Creative** | Storytelling, emotional content | ✅ Production Ready | 1-3s |
 
 ---
 
-## 🎙️ Mode 1: Realtime Conversation (Fastest)
+## 🎙️ Mode 1: Realtime Conversation
 
-**Best for:** Interactive voice conversations, customer service, live tutoring
+**Status:** 🔧 **Infrastructure Ready** (99 tests passing) | **Target: Windows/Linux CUDA**
 
-**Features:**
+### Current State
+
+**✅ What's Working:**
+- Complete audio I/O pipeline (microphone/speaker)
+- Voice Activity Detection (Silero VAD)
+- Background transcription (MLX-Whisper)
+- Interruption/barge-in capability
+- 99 comprehensive tests validating infrastructure
+
+**⚠️ What's Pending:**
+- **Windows/Linux (CUDA):** Requires PersonaPlex-7B installation
+- **macOS (Apple Silicon):** Requires MacEcho integration (future)
+
+### Target Performance (CUDA Systems)
+
+When PersonaPlex-7B is installed on Windows/Linux with NVIDIA GPU:
+
+**Target Features:**
 - ⚡ Ultra-low latency (70-170ms)
 - ✅ Full-duplex (natural interruptions)
 - 🎭 16 voice options
 - ❌ No Ollama needed
+- 🎯 Real-time speech-to-speech
 
-### Try It:
+### Try It (Infrastructure Mode):
 
 ```bash
+# Test the complete audio infrastructure
 python3 main.py --mode realtime --persona "You are a helpful assistant" --voice NATF2
 ```
 
-**What happens:**
-1. Velloris loads PersonaPlex-7B (one-time, ~30 seconds)
-2. You speak into the microphone
-3. Agent responds in real-time
-4. Press Ctrl+C to exit
+**What happens (current):**
+1. ✅ Audio I/O system initializes
+2. ✅ You speak into the microphone (captured and transcribed)
+3. ⚠️ S2S engine returns stub response (infrastructure validated)
+4. ✅ Interruption handling works correctly
+5. Press Ctrl+C to exit
 
-**Available Voices:**
+**For production voice synthesis, use Creative or Dubbing modes below.**
+
+### Setup for Production Use (CUDA Required)
+
+**Requirements:**
+- NVIDIA GPU (Ampere+: RTX 3000/4000, A100, H100)
+- 16GB+ VRAM
+- Windows or Linux
+- CUDA 12.1+
+
+**Installation (PersonaPlex-7B):**
+```bash
+# 1. Install system dependencies
+# Ubuntu/Debian:
+sudo apt install libopus-dev
+
+# 2. Clone PersonaPlex repository
+git clone https://github.com/NVIDIA/personaplex
+
+# 3. Install PersonaPlex
+pip install personaplex/moshi/.
+
+# 4. Login to Hugging Face (accept model license)
+huggingface-cli login
+
+# 5. Run realtime mode
+python3 main.py --mode realtime --persona "helpful assistant" --voice NATF2
+```
+
+**Target Voices (when PersonaPlex installed):**
 - Female: `NATF0`, `NATF1`, `NATF2`, `NATF3`, `VARF0-4`
 - Male: `NATM0`, `NATM1`, `NATM2`, `NATM3`, `VARM0-4`
+
+**macOS Users:** Realtime infrastructure is validated. MacEcho integration planned for future release. Use Creative or Dubbing modes for production.
 
 ---
 
 ## 📖 Mode 2: High-Fidelity Dubbing
 
+**Status:** ✅ **Production Ready** (User-verified quality)
+
 **Best for:** Content creation, video narration, audiobooks, podcasts
 
 **Features:**
-- 🎨 Professional quality audio
+- 🎨 Professional quality audio (MLX-Audio TTS)
 - 🌍 10 languages supported
 - 🎭 Voice cloning capability
 - ❌ No Ollama needed
+- ✅ Works on all platforms (CUDA, MPS, CPU)
 
 ### Try It:
 
@@ -167,15 +221,19 @@ python3 main.py --mode dubbing --script "Your narration here" --voice-ref voices
 
 ---
 
-## 🎨 Mode 3: Creative Synthesis (Most Flexible)
+## 🎨 Mode 3: Creative Synthesis
+
+**Status:** ✅ **Production Ready** (User-verified: "perfect audio")
 
 **Best for:** Storytelling, creative writing, emotional content
 
 **Features:**
 - 🧠 LLM reasoning (Ollama)
-- 🎭 Emotion control
-- 🌍 Multilingual
+- 🎭 Emotion control (natural language prompts)
+- 🌍 Multilingual support
+- 🎨 High-quality MLX-Audio TTS
 - ✅ Requires Ollama running
+- ✅ Works on all platforms (CUDA, MPS, CPU)
 
 ### Setup Ollama (One-Time):
 
@@ -204,21 +262,29 @@ python3 main.py --mode creative --script "Tell me a short story about a space ex
 
 ## 🔧 Quick Troubleshooting
 
-### "Ollama not available"
-**Solution:** Make sure Ollama is running:
-```bash
-# Terminal 1
-ollama serve
+### "Realtime mode returns silence"
+**Explanation:** Realtime mode infrastructure is complete (99 tests passing), but S2S engines require installation:
+- **Windows/Linux:** Install PersonaPlex-7B (see setup instructions above)
+- **macOS:** MacEcho integration pending (use Creative or Dubbing modes)
 
-# Terminal 2
-ollama pull llama3
-python3 main.py --mode creative --script "Test"
+**Current Options:**
+```bash
+# ✅ Production: Creative mode (LLM + TTS)
+python3 main.py --mode creative --script "Tell me a story" --emotion "excited"
+
+# ✅ Production: Dubbing mode (high-quality TTS)
+python3 main.py --mode dubbing --script "Test narration"
 ```
 
-### "PersonaPlex engine not available"
-**Solution:** PersonaPlex requires NVIDIA GPU. Try dubbing mode instead:
+### "Ollama not available"
+**Solution:** Ollama is only required for creative mode. Make sure it's running:
 ```bash
-python3 main.py --mode dubbing --script "Test narration"
+# Terminal 1: Start Ollama
+ollama serve
+
+# Terminal 2: Pull model and run
+ollama pull llama3
+python3 main.py --mode creative --script "Test"
 ```
 
 ### "No audio output"
@@ -226,12 +292,14 @@ python3 main.py --mode dubbing --script "Test narration"
 - Check system volume
 - Verify speaker/headphone connection
 - Try CPU mode: `python3 main.py --mode dubbing --script "Test" --device cpu`
+- Verify with: `python3 main.py --show-config`
 
 ### "CUDA out of memory"
 **Solution:**
 - Close other GPU applications
-- Use smaller model: `--llm-model llama3:8b` (creative mode)
+- Use smaller LLM: `--llm-model llama3:8b` (creative mode)
 - Try CPU mode: `--device cpu`
+- Dubbing mode uses less VRAM than creative mode
 
 ---
 
@@ -269,7 +337,14 @@ python3 main.py --mode dubbing --script "Test narration"
 ### Run Tests
 
 ```bash
+# All tests (99 total: 98 passing, 1 skipped)
+pytest tests/ -v
+
+# Integration tests only (17 tests)
 pytest tests/test_pipeline.py -v
+
+# Realtime infrastructure tests (40 tests)
+pytest tests/test_realtime_callbacks.py tests/test_vad_interruption.py tests/test_realtime_e2e.py -v
 ```
 
 ### Explore Examples
