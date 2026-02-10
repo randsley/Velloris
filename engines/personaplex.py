@@ -24,12 +24,15 @@ Installation:
 import torch
 import numpy as np
 from typing import Optional, Tuple, AsyncIterator
+from pathlib import Path
 
 from config import Config
 from utils.device_utils import get_optimal_device, get_optimal_dtype
 
 try:
-    from moshi.models.loaders import get_moshi_lm
+    from moshi.models.loaders import get_moshi_lm, get_mimi, FRAME_RATE
+    from moshi.models import LMGen
+    import sentencepiece
 
     HAS_PERSONAPLEX = True
 except ImportError:
@@ -112,7 +115,7 @@ class PersonaPlexEngine:
             )
 
     def _load_model(self):
-        """Load PersonaPlex-7B model from local path or Hugging Face."""
+        """Load PersonaPlex-7B model components from local path."""
         try:
             # Check for local model first
             local_path = Config.model.PERSONAPLEX_DIR
@@ -150,19 +153,63 @@ class PersonaPlexEngine:
             # Get optimal dtype for device
             optimal_dtype = get_optimal_dtype(self.device)
 
-            # Load the Moshi LM model (with local path if available)
+            # Load all three model components
             if use_local:
-                self.model = get_moshi_lm(
-                    device=self.device, checkpoint_dir=str(local_path)
-                )
+                # Load from local files
+                local_path = Path(local_path)
+                mimi_path = local_path / "tokenizer-e351c8d8-checkpoint125.safetensors"
+                lm_path = local_path / "model.safetensors"
+                tokenizer_path = local_path / "tokenizer_spm_32k_3.model"
             else:
-                self.model = get_moshi_lm(device=self.device)
+                from huggingface_hub import hf_hub_download
+                # Download from HF if not local
+                mimi_path = hf_hub_download("nvidia/personaplex-7b-v1", "tokenizer-e351c8d8-checkpoint125.safetensors")
+                lm_path = hf_hub_download("nvidia/personaplex-7b-v1", "model.safetensors")
+                tokenizer_path = hf_hub_download("nvidia/personaplex-7b-v1", "tokenizer_spm_32k_3.model")
+
+            # Load Mimi codec (audio encoder/decoder)
+            print("  Loading Mimi codec...")
+            self.mimi = get_mimi(str(mimi_path), device=self.device)
+
+            # Load Moshi LM (language model for inference)
+            print("  Loading Moshi LM...")
+            lm = get_moshi_lm(
+                filename=str(lm_path),
+                device=self.device,
+                dtype=optimal_dtype,
+                cpu_offload=False
+            )
+            lm.eval()
+
+            # Load SentencePiece tokenizer for text prompts
+            print("  Loading SentencePiece tokenizer...")
+            self.text_tokenizer = sentencepiece.SentencePieceProcessor(str(tokenizer_path))
+
+            # Create LMGen for inference management
+            self.lm_gen = LMGen(
+                lm,
+                audio_silence_frame_cnt=int(0.5 * self.mimi.frame_rate),
+                sample_rate=self.mimi.sample_rate,
+                device=self.device,
+                frame_rate=self.mimi.frame_rate,
+                save_voice_prompt_embeddings=False
+            )
+
+            # Store model info
+            self.model = {
+                "mimi": self.mimi,
+                "lm_gen": self.lm_gen,
+                "tokenizer": self.text_tokenizer,
+                "frame_size": int(self.mimi.sample_rate / self.mimi.frame_rate)
+            }
 
             print("[OK] PersonaPlex-7B model loaded successfully")
             print(
                 f"   Device: {self.device}, Dtype: {str(optimal_dtype).split('.')[-1]}"
             )
             print(f"   Source: {'local' if use_local else 'Hugging Face'}")
+            print(f"   Frame size: {self.model['frame_size']} samples")
+            print(f"   Sample rate: {self.mimi.sample_rate} Hz")
 
         except Exception as e:
             print(f"[X] Failed to load PersonaPlex-7B: {e}")
@@ -179,6 +226,8 @@ class PersonaPlexEngine:
                     "\nFor offline mode, run: python download_models.py --model personaplex"
                 )
             self.model = None
+            import traceback
+            traceback.print_exc()
 
     def process_speech(
         self,
@@ -348,6 +397,13 @@ class PersonaPlexEngine:
             print(f"Voice turn processing error: {e}")
             return "", None
 
+    def _wrap_text_prompt(self, text: str) -> str:
+        """Wrap text prompt with system tags as PersonaPlex expects."""
+        cleaned = text.strip()
+        if cleaned.startswith("<system>") and cleaned.endswith("<system>"):
+            return cleaned
+        return f"<system> {cleaned} <system>"
+
     def generate_s2s_response(
         self,
         audio: np.ndarray,
@@ -361,6 +417,11 @@ class PersonaPlexEngine:
 
         This method uses PersonaPlex-7B as intended: full S2S processing.
         No separate LLM or TTS needed.
+
+        Complete pipeline:
+        1. Encode user audio to codes with Mimi
+        2. Process codes with LMGen to generate response codes
+        3. Decode response codes back to audio with Mimi
 
         Args:
             audio: User audio input (24kHz preferred)
@@ -395,6 +456,7 @@ class PersonaPlexEngine:
                 self.voice, "NATF2.pt"
             )
             persona_text = text_prompt or self.persona or "You are a helpful assistant."
+            wrapped_persona = self._wrap_text_prompt(persona_text)
 
             print(
                 f"[MIC]  Processing {len(audio)/24000:.2f}s with PersonaPlex-7B (end-to-end S2S)"
@@ -402,25 +464,73 @@ class PersonaPlexEngine:
             print(f"   Voice: {voice_file}")
             print(f"   Persona: {persona_text[:60]}...")
 
-            # TODO: Actual PersonaPlex inference goes here
-            # This requires the moshi library and proper model loading
-            # For now, return stub response
             with torch.no_grad():
-                # In real implementation:
-                # agent_audio = self.model.generate(
-                #     audio=audio,
-                #     voice_prompt=voice_file,
-                #     text_prompt=persona_text,
-                #     streaming=streaming
-                # )
+                # Prepare model for streaming inference
+                self.mimi.streaming_forever(1)
+                self.lm_gen.streaming_forever(1)
 
-                # Stub: Return 2 seconds of silence
-                agent_audio = np.zeros(int(24000 * 2), dtype=np.float32)
+                # Set text prompt
+                text_tokens = self.text_tokenizer.encode(wrapped_persona)
+                self.lm_gen.text_prompt_tokens = text_tokens if text_tokens else None
 
-            duration = len(agent_audio) / 24000
-            print(f"[OK] Generated {duration:.2f}s of agent speech")
+                # Load voice prompt embedding
+                voices_dir = Config.model.PERSONAPLEX_DIR / "voices"
+                if voices_dir.exists():
+                    voice_path = voices_dir / voice_file
+                    if voice_path.exists():
+                        try:
+                            self.lm_gen.load_voice_prompt_embeddings(str(voice_path))
+                            print(f"   [OK] Loaded voice: {voice_file}")
+                        except Exception as ve:
+                            print(f"   [!] Could not load voice {voice_file}: {ve}")
+                else:
+                    print(f"   [!] Voices directory not found at {voices_dir}")
 
-            return agent_audio, 24000
+                # Convert audio to tensor
+                audio_tensor = torch.from_numpy(audio.astype(np.float32))
+                audio_tensor = audio_tensor.to(device=self.device)[None, None]
+
+                # Process audio in chunks (frames)
+                frame_size = self.model["frame_size"]
+                output_frames = []
+
+                # Process all frames from user audio
+                num_frames = audio_tensor.shape[-1] // frame_size
+                for frame_idx in range(num_frames):
+                    start = frame_idx * frame_size
+                    end = start + frame_size
+                    frame = audio_tensor[:, :, start:end]
+
+                    # Encode user audio frame to codes
+                    codes = self.mimi.encode(frame)
+
+                    # Process each code dimension through the language model
+                    for code_idx in range(codes.shape[-1]):
+                        tokens = self.lm_gen.step(codes[:, :, code_idx : code_idx + 1])
+                        if tokens is None:
+                            continue
+
+                        # Decode model output tokens back to audio
+                        output_frame = self.mimi.decode(tokens[:, 1:9])  # Skip text token
+                        output_frame = output_frame.cpu().numpy()
+                        output_frames.append(output_frame[0, 0])  # Extract audio data
+
+                # Concatenate all output frames
+                if output_frames:
+                    agent_audio = np.concatenate(output_frames, axis=0)
+                    agent_audio = np.asarray(agent_audio, dtype=np.float32)
+
+                    # Normalize audio to prevent clipping
+                    max_val = np.max(np.abs(agent_audio))
+                    if max_val > 1.0:
+                        agent_audio = agent_audio / max_val
+
+                    duration = len(agent_audio) / 24000
+                    print(f"[OK] Generated {duration:.2f}s of agent speech")
+                    return agent_audio, 24000
+                else:
+                    print("[!] No output generated")
+                    return None
 
         except Exception as e:
             print(f"[X] S2S generation error: {e}")
@@ -428,12 +538,30 @@ class PersonaPlexEngine:
 
             traceback.print_exc()
             return None
+        finally:
+            # Reset streaming state
+            try:
+                self.mimi.reset_streaming()
+                self.lm_gen.reset_streaming()
+            except Exception:
+                pass
 
     def unload(self):
         """Unload models to free memory."""
+        if hasattr(self, "mimi"):
+            self.mimi = None
+        if hasattr(self, "lm_gen"):
+            self.lm_gen = None
+        if hasattr(self, "text_tokenizer"):
+            self.text_tokenizer = None
         self.model = None
         if hasattr(self, "_qwen3_tts"):
             self._qwen3_tts = None
+
+        # Clear CUDA cache if available
+        if torch.cuda.is_available():
+            torch.cuda.empty_cache()
+
         print("[OK] PersonaPlex-7B engine unloaded")
 
     @classmethod
