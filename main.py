@@ -22,6 +22,47 @@ from utils.audio_io import IntegratedAudioController, play_audio
 from config import Config
 
 
+# Voice format mapping: convert long names to short codes
+VOICE_MAP = {
+    # Long names -> Short codes
+    "natural_female_0": "NATF0",
+    "natural_female_1": "NATF1",
+    "natural_female_2": "NATF2",
+    "natural_female_3": "NATF3",
+    "natural_male_0": "NATM0",
+    "natural_male_1": "NATM1",
+    "natural_male_2": "NATM2",
+    "natural_male_3": "NATM3",
+    "varied_female_0": "VARF0",
+    "varied_female_1": "VARF1",
+    "varied_female_2": "VARF2",
+    "varied_female_3": "VARF3",
+    "varied_female_4": "VARF4",
+    "varied_male_0": "VARM0",
+    "varied_male_1": "VARM1",
+    "varied_male_2": "VARM2",
+    "varied_male_3": "VARM3",
+    "varied_male_4": "VARM4",
+}
+
+
+def voice_converter(voice_input):
+    """Convert voice input (long name or short code) to short code."""
+    # Check if it's a long name
+    if voice_input in VOICE_MAP:
+        return VOICE_MAP[voice_input]
+    # Already a short code
+    if voice_input in VOICE_MAP.values():
+        return voice_input
+    # Invalid voice
+    valid_short = list(VOICE_MAP.values())
+    valid_long = list(VOICE_MAP.keys())
+    raise argparse.ArgumentTypeError(
+        f"Invalid voice '{voice_input}'. Use short codes ({', '.join(valid_short)}) "
+        f"or long names ({', '.join(valid_long)})"
+    )
+
+
 class VellorisApplication:
     """
     Main Velloris application.
@@ -427,29 +468,11 @@ For full documentation, see README.md
 
     parser.add_argument(
         "--voice",
-        type=str,
+        type=voice_converter,
         default=Config.app.REALTIME_VOICE,
-        choices=[
-            "NATF0",
-            "NATF1",
-            "NATF2",
-            "NATF3",
-            "NATM0",
-            "NATM1",
-            "NATM2",
-            "NATM3",
-            "VARF0",
-            "VARF1",
-            "VARF2",
-            "VARF3",
-            "VARF4",
-            "VARM0",
-            "VARM1",
-            "VARM2",
-            "VARM3",
-            "VARM4",
-        ],
-        help="Voice selection for PersonaPlex (realtime mode): NATF=natural female, NATM=natural male, VARF=varied female, VARM=varied male",
+        help="Voice selection for PersonaPlex (realtime mode). "
+        "Use short codes (NATF0-3, NATM0-3, VARF0-4, VARM0-4) "
+        "or long names (natural_female_0, natural_male_0, varied_female_0, varied_male_0, etc.)",
     )
 
     # Dubbing mode arguments
