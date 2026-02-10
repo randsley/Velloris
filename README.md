@@ -5,13 +5,14 @@
 Velloris is a state-of-the-art framework for creating lifelike, interactive AI agents that run entirely on your local hardware. With three specialized modes, Velloris delivers the perfect voice AI solution for any use case—from ultra-low latency conversations to professional-quality content creation.
 
 **Key Features:**
-- ⚡ **Three-Mode Architecture**: Real-time S2S + high-fidelity dubbing + creative synthesis
-- 🎯 **70-170ms Latency**: Full-duplex conversations with PersonaPlex-7B (18x faster than Gemini Live!)
+- ⚡ **Three-Mode Architecture**: 🔧 Infrastructure-ready realtime + ✅ high-fidelity dubbing + ✅ creative synthesis
+- 📚 **Production-Ready Dubbing & Creative**: Professional-quality narration and emotional synthesis
+- 🎯 **Realtime Infrastructure Complete**: 99 tests passing, targeting 70-170ms latency on CUDA (PersonaPlex-7B pending)
 - 🌐 **Cross-Platform**: Windows (NVIDIA CUDA) + macOS (Apple Metal/MPS) + Linux (CPU)
-- 🚀 **Production Ready**: Optimized device detection, lazy loading, mode-based routing
+- 🚀 **Optimized**: Automatic device detection, lazy loading, mode-based routing
 - 🔒 **Privacy First**: 100% local processing, no cloud dependencies
-- 🎭 **10 Languages**: Multilingual support via Qwen3-TTS
-- 🧠 **Ollama Optional**: Not required for basic conversations
+- 🎭 **10 Languages**: Multilingual support via MLX-Audio TTS
+- 🧠 **Ollama Optional**: Required only for creative mode (LLM reasoning)
 
 ---
 
@@ -59,15 +60,22 @@ python3 main.py --show-config
 
 ### 3. Choose Your Mode
 
-#### **Real-Time Conversation** (PersonaPlex S2S)
-Ultra-low latency, full-duplex conversations:
+#### **Real-Time Conversation** (Infrastructure Ready)
+🔧 **Status**: Infrastructure complete (99 tests passing) | **Target**: PersonaPlex-7B on CUDA
 ```bash
 python3 main.py --mode realtime --persona "You are a helpful tutor" --voice NATF2
 ```
+**Current State:**
+- ✅ Audio I/O pipeline (microphone/speaker)
+- ✅ Voice Activity Detection (interruption ready)
+- ⚠️ S2S Engine: Stub-only (awaiting PersonaPlex-7B)
+
+**Target Features (when PersonaPlex-7B installed):**
 - ⚡ **70-170ms latency**
 - ✅ **Full-duplex** (can interrupt naturally)
 - ❌ **No Ollama needed**
-- 🎯 **Best for**: Interactive conversations, customer service
+
+**Current Alternative**: Use Dubbing or Creative modes for production voice synthesis
 
 #### **High-Fidelity Dubbing** (Qwen3-TTS)
 Professional narration for content creation:
@@ -115,9 +123,12 @@ Velloris/
 │   ├── audio_utils.py      # Resampling & normalization
 │   ├── device_utils.py     # Device detection (CUDA/MPS/CPU)
 │   └── vad_handler.py      # Voice Activity Detection
-├── tests/                  # Test Suite (46 tests)
-│   ├── test_pipeline.py    # Integration tests
-│   └── test_critical_paths.py  # Critical path & platform tests
+├── tests/                  # Test Suite (99 tests: 98 passing, 1 skipped)
+│   ├── test_pipeline.py    # Integration tests (22 tests)
+│   ├── test_critical_paths.py  # Critical path & platform tests (38 tests)
+│   ├── test_realtime_callbacks.py  # Audio callback tests (15 tests)
+│   ├── test_realtime_e2e.py  # End-to-end tests (14 tests)
+│   └── test_vad_interruption.py  # VAD & interruption tests (10 tests)
 ├── config.py               # Configuration
 ├── main.py                 # CLI Application
 ├── requirements.txt        # Python Dependencies
@@ -134,15 +145,17 @@ Velloris/
 
 | Feature | Real-Time | Dubbing | Creative |
 |---------|-----------|---------|----------|
-| **Latency** | 70-170ms ⚡ | N/A | 1-3s |
-| **Full-Duplex** | ✅ Yes | ❌ No | ❌ No |
-| **Interruption** | ✅ 95% success | ❌ No | ❌ No |
-| **Languages** | English | 10 languages | 10 languages |
-| **Voice Options** | 16 preset | Unlimited | Unlimited |
-| **Emotion Control** | Limited | ✅ Yes | ✅ Yes |
+| **Status** | 🔧 Infrastructure | ✅ Production | ✅ Production |
+| **Latency** | Target: 70-170ms ⚡ | N/A | 1-3s |
+| **Full-Duplex** | Infrastructure ready | ❌ No | ❌ No |
+| **Interruption** | VAD ready (target) | ❌ No | ❌ No |
+| **Languages** | English (target) | **10 languages** | **10 languages** |
+| **Voice Options** | 16 preset (mapped) | **Unlimited** | **Unlimited** |
+| **Emotion Control** | Target feature | ✅ Yes | ✅ Yes |
 | **Ollama Required** | ❌ No | ❌ No | ✅ Yes |
-| **GPU Required** | ✅ NVIDIA (16GB+) | Recommended | Recommended |
-| **Best For** | Conversations | Narration | Creative content |
+| **GPU Required** | ✅ NVIDIA (target) | Optional | Optional |
+| **User Feedback** | Pending S2S | User-verified ✅ | "Perfect audio" ✅ |
+| **Best For** | (when S2S ready) | Narration | Creative content |
 
 ### Real-Time Mode Examples
 
