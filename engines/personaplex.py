@@ -21,6 +21,11 @@ Installation:
   4. Accept license: huggingface-cli login
 """
 
+# Disable torch.compile() optimization if Triton is not available
+# Must be set BEFORE importing moshi modules
+import os
+os.environ["TORCH_DYNAMO_DISABLE"] = "1"
+
 import torch
 import numpy as np
 from typing import Optional, Tuple, AsyncIterator
@@ -30,10 +35,6 @@ from config import Config
 from utils.device_utils import get_optimal_device, get_optimal_dtype
 
 try:
-    # Disable torch.compile() optimization if Triton is not available
-    import os
-    os.environ["TORCH_DYNAMO_DISABLE"] = "1"
-
     from moshi.models.loaders import get_moshi_lm, get_mimi, FRAME_RATE
     from moshi.models import LMGen
     import sentencepiece
@@ -473,9 +474,11 @@ class PersonaPlexEngine:
                 self.mimi.streaming_forever(1)
                 self.lm_gen.streaming_forever(1)
 
-                # Set text prompt
+                # Set text prompt - must set attribute before calling step_system_prompts
                 text_tokens = self.text_tokenizer.encode(wrapped_persona)
-                self.lm_gen.text_prompt_tokens = text_tokens if text_tokens else None
+                if text_tokens:
+                    self.lm_gen.text_prompt_tokens = text_tokens
+                    self.lm_gen.step_system_prompts(self.mimi)
 
                 # Load voice prompt embedding
                 voices_dir = Config.model.PERSONAPLEX_DIR / "voices"
@@ -508,13 +511,14 @@ class PersonaPlexEngine:
                     # Encode user audio frame to codes
                     codes = self.mimi.encode(frame)
 
-                    # Process each code dimension through the language model
-                    for code_idx in range(codes.shape[-1]):
-                        tokens = self.lm_gen.step(codes[:, :, code_idx : code_idx + 1])
-                        if tokens is None:
-                            continue
+                    # Process codes through the language model
+                    # codes shape: [batch, code_dims, seq_len]
+                    tokens = self.lm_gen.step(codes)
 
+                    if tokens is not None:
                         # Decode model output tokens back to audio
+                        # tokens shape: [batch, vocab_size] after step()
+                        # Extract audio codes (skip text dimension at index 0)
                         output_frame = self.mimi.decode(tokens[:, 1:9])  # Skip text token
                         output_frame = output_frame.cpu().numpy()
                         output_frames.append(output_frame[0, 0])  # Extract audio data
