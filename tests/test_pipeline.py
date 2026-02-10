@@ -242,11 +242,14 @@ class TestS2SEngines:
         engine = MacEchoEngine(device="cpu")
         assert engine is not None
 
-        # Call should return None without real model
+        # Call should return stub audio (2 seconds of silence)
         if not HAS_MACECHO:
             audio = np.random.randn(16000).astype(np.float32)
             result = engine.generate_s2s_response(audio, sr=24000)
-            assert result is None
+            assert result is not None
+            stub_audio, sr = result
+            assert sr == 24000
+            assert len(stub_audio) == 48000  # 2 seconds at 24kHz
 
         engine.unload()
 

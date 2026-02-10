@@ -130,8 +130,10 @@ class IntegratedAudioController:
         self.buffer_duration = 2.0  # Transcribe every 2 seconds
         self.buffer_size = int(self.fs * self.buffer_duration)
 
-        # Transcription queue
-        self.transcription_queue = queue.Queue()
+        # Transcription queues
+        self.transcription_queue = queue.Queue()  # Input: audio chunks to transcribe
+        self.transcription_output = queue.Queue()  # Output: transcribed text
+        self.audio_input_ready = queue.Queue()  # Output: raw audio chunks for S2S processing
 
         # Load Whisper model if available
         self.whisper_model = None
@@ -142,9 +144,11 @@ class IntegratedAudioController:
                 from config import Config
 
                 if sys.platform == "darwin":
-                    self.whisper_model = WhisperEngine(
-                        model_name=f"whisper-{whisper_model}"
-                    )
+                    # Use the full MLX model ID from config, not constructed name
+                    mlx_model_id = Config.model.MLX_WHISPER_MODEL_ID
+                    # Extract just the model name part (after mlx-community/)
+                    model_name = mlx_model_id.replace("mlx-community/", "")
+                    self.whisper_model = WhisperEngine(model_name=model_name)
                 else:
                     local_path = Config.model.WHISPER_DIR
                     use_local = Config.model.is_model_downloaded("whisper")
@@ -195,7 +199,7 @@ class IntegratedAudioController:
         # Buffer audio for transcription
         self.input_buffer.extend(audio_chunk)
 
-        # When buffer reaches threshold, transcribe
+        # When buffer reaches threshold, process audio
         if len(self.input_buffer) >= self.buffer_size:
             buffer_copy = np.array(
                 self.input_buffer[: self.buffer_size], dtype=np.float32
@@ -207,6 +211,9 @@ class IntegratedAudioController:
             if self.whisper_model is not None:
                 self.transcription_queue.put(buffer_copy)
 
+            # Also make raw audio available for S2S processing
+            self.audio_input_ready.put(buffer_copy)
+
     def _output_callback(self, outdata, frames, time, status):
         """
         Continuous stream handling Output (AI Voice).
@@ -217,6 +224,12 @@ class IntegratedAudioController:
 
         if self.handler.is_interrupted:
             outdata.fill(0)  # Immediately mute the speaker buffer
+            # Clear the queue when interrupted
+            while not self.audio_queue.empty():
+                try:
+                    self.audio_queue.get_nowait()
+                except queue.Empty:
+                    break
             return
 
         try:
@@ -254,8 +267,8 @@ class IntegratedAudioController:
                 transcription = result.get("text", "").strip()
                 if transcription:
                     print(f"User (transcribed): {transcription}")
-                    # Put transcription in a queue for the main loop
-                    # This would be consumed by the main application
+                    # Put transcription in output queue for main loop
+                    self.transcription_output.put(transcription)
 
             except queue.Empty:
                 continue
@@ -283,6 +296,44 @@ class IntegratedAudioController:
         if self.transcription_thread.is_alive():
             self.transcription_thread.join(timeout=2.0)
 
+    def has_transcription(self):
+        """Check if transcriptions are available."""
+        return not self.transcription_output.empty()
+
+    def get_transcription(self, timeout=0.1):
+        """
+        Get the next transcription from the queue.
+
+        Args:
+            timeout: Max time to wait for transcription (seconds)
+
+        Returns:
+            Transcribed text string, or None if queue is empty
+        """
+        try:
+            return self.transcription_output.get(timeout=timeout)
+        except queue.Empty:
+            return None
+
+    def has_audio_input(self):
+        """Check if raw audio chunks are available for S2S processing."""
+        return not self.audio_input_ready.empty()
+
+    def get_audio_input(self, timeout=0.1):
+        """
+        Get the next audio chunk ready for S2S processing.
+
+        Args:
+            timeout: Max time to wait for audio (seconds)
+
+        Returns:
+            Audio chunk as numpy array (float32, 16kHz), or None if queue is empty
+        """
+        try:
+            return self.audio_input_ready.get(timeout=timeout)
+        except queue.Empty:
+            return None
+
     async def start_session(self):
         """
         Start audio input/output session.
@@ -306,22 +357,20 @@ class IntegratedAudioController:
         self.start_transcription_worker()
 
         try:
-            with sd.Stream(
+            with sd.InputStream(
                 callback=self._input_callback,
                 channels=1,
                 samplerate=self.fs,
                 blocksize=512,
                 dtype="int16",
                 device=input_device,
-                kind="input",
-            ), sd.Stream(
+            ), sd.OutputStream(
                 callback=self._output_callback,
                 channels=1,
                 samplerate=self.output_fs,
                 blocksize=int(self.output_fs * 0.05),  # 50ms chunks
                 dtype="float32",
                 device=output_device,
-                kind="output",
             ):
                 print("Session Active. Speak to the Agent...")
                 while True:  # Keep session alive until explicitly stopped

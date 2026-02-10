@@ -94,8 +94,8 @@ class VellorisApplication:
         """
         Run Velloris in realtime mode.
 
-        Real-time voice conversation with the agent using PersonaPlex S2S.
-        User can interrupt the agent at any time.
+        Real-time voice conversation with the agent using S2S engine.
+        User can interrupt the agent at any time with barge-in.
         """
         print("\n" + "=" * 60)
         print("🎤 VELLORIS - REALTIME MODE")
@@ -105,9 +105,8 @@ class VellorisApplication:
         print("Press Ctrl+C to exit.\n")
 
         try:
-            # For now, show a demo with text input (since audio setup is complex)
-            # In production, this would use the audio_controller.start_session()
-            await self._demo_realtime_mode()
+            # Run the actual audio processing loop
+            await self._realtime_audio_loop()
 
         except KeyboardInterrupt:
             print("\n\nInterrupted by user")
@@ -119,14 +118,100 @@ class VellorisApplication:
         finally:
             self.cleanup()
 
+    async def _realtime_audio_loop(self):
+        """
+        Main realtime audio processing loop.
+
+        Captures audio from microphone, processes through S2S engine,
+        and plays responses through speakers with barge-in capability.
+        """
+        import sounddevice as sd
+
+        # Find audio devices
+        input_device = sd.default.device[0]
+        output_device = sd.default.device[1]
+
+        input_device_info = sd.query_devices(input_device, kind="input")
+        output_device_info = sd.query_devices(output_device, kind="output")
+
+        print(f"🎙️  Input: {input_device_info['name']}")
+        print(f"🔊 Output: {output_device_info['name']}")
+        print()
+
+        # Start background transcription worker
+        self.audio_controller.start_transcription_worker()
+
+        try:
+            # Open audio streams
+            with sd.InputStream(
+                callback=self.audio_controller._input_callback,
+                channels=1,
+                samplerate=self.audio_controller.fs,  # 16kHz for VAD
+                blocksize=512,  # 32ms chunks for Silero VAD
+                dtype="int16",
+                device=input_device,
+            ), sd.OutputStream(
+                callback=self.audio_controller._output_callback,
+                channels=1,
+                samplerate=self.audio_controller.output_fs,  # 24kHz for TTS
+                blocksize=int(self.audio_controller.output_fs * 0.05),  # 50ms chunks
+                dtype="float32",
+                device=output_device,
+            ):
+                print("✅ Session active. Listening...\n")
+                print("💬 Speak naturally - I'll respond when you pause.")
+                print("✋ You can interrupt me at any time (barge-in enabled).\n")
+
+                # Main processing loop
+                while self.running:
+                    # Check for audio input ready for S2S processing
+                    if self.audio_controller.has_audio_input():
+                        # Get raw audio chunk (16kHz, 2 seconds)
+                        audio_chunk_16k = self.audio_controller.get_audio_input(
+                            timeout=0.1
+                        )
+
+                        if audio_chunk_16k is not None:
+                            # Resample to 24kHz for S2S engine
+                            from utils.audio_utils import resample_audio
+
+                            audio_chunk_24k = resample_audio(
+                                audio_chunk_16k, 16000, 24000
+                            )
+
+                            # Process through S2S engine
+                            result = self.orchestrator.route_request(
+                                mode="realtime",
+                                audio_input=audio_chunk_24k,
+                                voice_prompt=self.args.voice,
+                                text_prompt=self.args.persona,
+                            )
+
+                            if result:
+                                agent_audio, sr = result
+
+                                # Queue response for playback
+                                if agent_audio is not None and len(agent_audio) > 0:
+                                    self.audio_controller.queue_audio_output(
+                                        agent_audio
+                                    )
+
+                                # Reset interruption flag for next turn
+                                self.interruption_handler.reset()
+
+                    # Prevent busy-waiting
+                    await asyncio.sleep(0.05)  # Check every 50ms
+
+        finally:
+            print("\n🛑 Stopping audio session...")
+            self.audio_controller.stop_transcription_worker()
+
     async def _demo_realtime_mode(self):
         """
         Demo realtime mode with text input.
 
-        In a real implementation, this would use:
-        - self.audio_controller.start_session()
-        - Real audio transcription with Whisper
-        - Real-time interruption handling
+        DEPRECATED: Use _realtime_audio_loop() for actual audio processing.
+        Kept for backwards compatibility and testing without audio devices.
         """
         print("Demo Mode: Type your input (type 'quit' to exit)\n")
 
@@ -142,24 +227,25 @@ class VellorisApplication:
                 if not user_input.strip():
                     continue
 
-                # Process with brain
-                print("\nVelloris: Processing...")
-                result = await self.brain.process_voice_turn(user_input)
+                # Process with brain (creative mode needs brain)
+                if self.brain:
+                    print("\nVelloris: Processing...")
+                    result = await self.brain.process_voice_turn(user_input)
 
-                if isinstance(result, tuple) and len(result) == 3:
-                    # New format: (response_text, audio, sample_rate)
-                    response_text, audio_response, sr = result
-                else:
-                    # Legacy format: (response_text, audio)
-                    response_text, audio_response = result
-                    sr = 24000  # Default sample rate
+                    if isinstance(result, tuple) and len(result) == 3:
+                        # New format: (response_text, audio, sample_rate)
+                        response_text, audio_response, sr = result
+                    else:
+                        # Legacy format: (response_text, audio)
+                        response_text, audio_response = result
+                        sr = 24000  # Default sample rate
 
-                print(f"Velloris: {response_text}\n")
+                    print(f"Velloris: {response_text}\n")
 
-                # If audio was generated, play it
-                if audio_response is not None and len(audio_response) > 0:
-                    print()
-                    play_audio(audio_response, samplerate=sr)
+                    # If audio was generated, play it
+                    if audio_response is not None and len(audio_response) > 0:
+                        print()
+                        play_audio(audio_response, samplerate=sr)
 
                 # Reset interruption status for next turn
                 if self.interruption_handler:

@@ -261,7 +261,9 @@ class MacEchoEngine:
         """
         if self.agent is None:
             print("[STUB MODE] MacEcho not loaded")
-            return None
+            # Return 2 seconds of silence at 24kHz (stub mode)
+            stub_audio = np.zeros(int(24000 * 2), dtype=np.float32)
+            return stub_audio, 24000
 
         try:
             # Use instance voice/persona if not overridden

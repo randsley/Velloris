@@ -22,4 +22,4 @@ soundfile>=0.12.1
 funasr>=1.0.0
 
 # Text-to-speech (CosyVoice TTS)
-cosyvoice>=0.1.0
+cosyvoice>=0.0.8
