@@ -30,6 +30,10 @@ from config import Config
 from utils.device_utils import get_optimal_device, get_optimal_dtype
 
 try:
+    # Disable torch.compile() optimization if Triton is not available
+    import os
+    os.environ["TORCH_DYNAMO_DISABLE"] = "1"
+
     from moshi.models.loaders import get_moshi_lm, get_mimi, FRAME_RATE
     from moshi.models import LMGen
     import sentencepiece
