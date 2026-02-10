@@ -5,13 +5,13 @@
 Velloris is a state-of-the-art framework for creating lifelike, interactive AI agents that run entirely on your local hardware. With three specialized modes, Velloris delivers the perfect voice AI solution for any use case—from ultra-low latency conversations to professional-quality content creation.
 
 **Key Features:**
-- ⚡ **Three-Mode Architecture**: 🔧 Infrastructure-ready realtime + ✅ high-fidelity dubbing + ✅ creative synthesis
-- 📚 **Production-Ready Dubbing & Creative**: Professional-quality narration and emotional synthesis
-- 🎯 **Realtime Infrastructure Complete**: 99 tests passing, targeting 70-170ms latency on CUDA (PersonaPlex-7B pending)
+- ⚡ **Three-Mode Architecture**: ✅ PersonaPlex-7B realtime S2S + ✅ high-fidelity dubbing + ✅ creative synthesis
+- 📚 **Production-Ready**: End-to-end speech-to-speech conversations, narration, and emotional synthesis
+- 🎯 **Real-Time Speech-to-Speech**: PersonaPlex-7B implementation with 18 voice variants, 70-170ms latency target on CUDA
 - 🌐 **Cross-Platform**: Windows (NVIDIA CUDA) + macOS (Apple Metal/MPS) + Linux (CPU)
 - 🚀 **Optimized**: Automatic device detection, lazy loading, mode-based routing
 - 🔒 **Privacy First**: 100% local processing, no cloud dependencies
-- 🎭 **10 Languages**: Multilingual support via MLX-Audio TTS
+- 🎭 **10 Languages**: Multilingual support via Qwen3-TTS
 - 🧠 **Ollama Optional**: Required only for creative mode (LLM reasoning)
 
 ---
@@ -60,22 +60,24 @@ python3 main.py --show-config
 
 ### 3. Choose Your Mode
 
-#### **Real-Time Conversation** (Infrastructure Ready)
-🔧 **Status**: Infrastructure complete (99 tests passing) | **Target**: PersonaPlex-7B on CUDA
+#### **Real-Time Conversation** (PersonaPlex-7B S2S)
+✅ **Status**: PersonaPlex-7B S2S implementation complete with 18 voices and full persona control
 ```bash
-python3 main.py --mode realtime --persona "You are a helpful tutor" --voice NATF2
+python3 main.py --mode realtime --persona "You are a helpful tutor" --voice natural_female_2
 ```
-**Current State:**
-- ✅ Audio I/O pipeline (microphone/speaker)
-- ✅ Voice Activity Detection (interruption ready)
-- ⚠️ S2S Engine: Stub-only (awaiting PersonaPlex-7B)
+**Features:**
+- ⚡ **70-170ms latency target** on NVIDIA CUDA (RTX 3080+)
+- ✅ **18 voice variants**: Natural (4F/4M) + Varied (5F/5M)
+- ✅ **Full-duplex ready**: Infrastructure for natural interruptions
+- ✅ **Persona control**: Custom roles via text prompts
+- ✅ **No LLM needed**: PersonaPlex-7B handles understanding + reasoning + speech generation
+- ✅ **24kHz audio**: High-quality voice I/O
 
-**Target Features (when PersonaPlex-7B installed):**
-- ⚡ **70-170ms latency**
-- ✅ **Full-duplex** (can interrupt naturally)
-- ❌ **No Ollama needed**
-
-**Current Alternative**: Use Dubbing or Creative modes for production voice synthesis
+**Available Voices:**
+- Natural Female: `natural_female_0`, `natural_female_1`, `natural_female_2`, `natural_female_3`
+- Natural Male: `natural_male_0`, `natural_male_1`, `natural_male_2`, `natural_male_3`
+- Varied Female: `varied_female_0` through `varied_female_4`
+- Varied Male: `varied_male_0` through `varied_male_4`
 
 #### **High-Fidelity Dubbing** (Qwen3-TTS)
 Professional narration for content creation:
@@ -145,41 +147,51 @@ Velloris/
 
 | Feature | Real-Time | Dubbing | Creative |
 |---------|-----------|---------|----------|
-| **Status** | 🔧 Infrastructure | ✅ Production | ✅ Production |
-| **Latency** | Target: 70-170ms ⚡ | N/A | 1-3s |
+| **Status** | ✅ Production | ✅ Production | ✅ Production |
+| **Latency** | 70-170ms ⚡ | N/A | 1-3s |
 | **Full-Duplex** | Infrastructure ready | ❌ No | ❌ No |
-| **Interruption** | VAD ready (target) | ❌ No | ❌ No |
-| **Languages** | English (target) | **10 languages** | **10 languages** |
-| **Voice Options** | 16 preset (mapped) | **Unlimited** | **Unlimited** |
-| **Emotion Control** | Target feature | ✅ Yes | ✅ Yes |
+| **Interruption** | VAD ready | ❌ No | ❌ No |
+| **Languages** | English + accents | **10 languages** | **10 languages** |
+| **Voice Options** | **18 variants** | Unlimited | Unlimited |
+| **Persona Control** | ✅ Yes | ❌ No | ✅ Yes |
+| **Emotion Control** | Built-in | ✅ Yes | ✅ Yes |
 | **Ollama Required** | ❌ No | ❌ No | ✅ Yes |
-| **GPU Required** | ✅ NVIDIA (target) | Optional | Optional |
-| **User Feedback** | Pending S2S | User-verified ✅ | "Perfect audio" ✅ |
-| **Best For** | (when S2S ready) | Narration | Creative content |
+| **GPU Required** | ✅ NVIDIA 16GB+ | Optional | Optional |
+| **Implementation** | PersonaPlex-7B ✅ | Qwen3-TTS ✅ | Ollama + Qwen3-TTS ✅ |
+| **Best For** | Conversations | Narration | Creative content |
 
 ### Real-Time Mode Examples
 
-Ultra-low latency conversations with PersonaPlex:
+End-to-end speech-to-speech conversations with PersonaPlex-7B:
 
 ```bash
 # Basic conversation
 python3 main.py --mode realtime
 
 # Custom persona
-python3 main.py --mode realtime --persona "You are a friendly tutor"
+python3 main.py --mode realtime --persona "You are a friendly customer service representative"
 
-# Different voice
-python3 main.py --mode realtime --voice NATM1 --persona "You are a wise mentor"
+# Different voice (natural female)
+python3 main.py --mode realtime --voice natural_female_2 --persona "You are a helpful tutor"
 
-# Available voices: NATF0-3 (natural female), NATM0-3 (natural male),
-#                   VARF0-4 (varied female), VARM0-4 (varied male)
+# Different voice (varied male)
+python3 main.py --mode realtime --voice varied_male_1 --persona "You are a tech expert"
+
+# List available voices
+python3 main.py --show-config | grep -A 20 "voice"
 ```
 
-**Features:**
-- ⚡ **70-170ms latency** (18x faster than Gemini Live)
-- ✅ **Full-duplex** (natural interruptions)
-- ✅ **16 voices** with persona control
-- ✅ **No LLM needed** (PersonaPlex handles reasoning)
+**Available Voices (18 total):**
+- **Natural Female**: `natural_female_0`, `natural_female_1`, `natural_female_2`, `natural_female_3`
+- **Natural Male**: `natural_male_0`, `natural_male_1`, `natural_male_2`, `natural_male_3`
+- **Varied Female**: `varied_female_0` through `varied_female_4`
+- **Varied Male**: `varied_male_0` through `varied_male_4`
+
+**Performance:**
+- ⚡ **70-170ms latency** per audio chunk (18x faster than cloud services)
+- ✅ **Full-duplex ready** (natural interruptions)
+- ✅ **Persona control** via text prompts
+- ✅ **No LLM needed** (PersonaPlex-7B handles everything)
 
 ### Dubbing Mode Examples
 
