@@ -47,10 +47,26 @@ chmod +x install_macos.sh
 install_windows.bat
 ```
 
-**Linux (CUDA):**
+**Linux / WSL2:**
 ```bash
-# Same as Windows setup
-install_windows.bat  # or run equivalent pip commands
+# Install system dependencies
+sudo apt-get install -y portaudio19-dev ffmpeg sox libasound2-plugins pulseaudio-utils
+
+# Create virtual environment
+python3 -m venv venv
+source venv/bin/activate
+pip install --upgrade pip
+
+# Install PyTorch with CUDA
+pip install torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cu121
+
+# Install requirements
+pip install -r requirements-dev.txt
+```
+
+**WSL2 Note:** Velloris auto-detects Ollama running on Windows and routes audio through PulseAudio/WSLg. Configure ALSA to use PulseAudio:
+```bash
+echo -e "pcm.default pulse\nctl.default pulse" > ~/.asoundrc
 ```
 
 ### 2. Test Installation
@@ -86,7 +102,7 @@ Professional narration for content creation:
 ```bash
 python3 main.py --mode dubbing --script "Your narration here"
 ```
-- 🎨 **Professional quality** (12kHz)
+- 🎨 **Professional quality** (24kHz)
 - 🌍 **10 languages** supported
 - 🎭 **Voice cloning** available
 - 🎯 **Best for**: Audiobooks, podcasts, video narration
@@ -94,16 +110,19 @@ python3 main.py --mode dubbing --script "Your narration here"
 #### **Creative Assistant** (Ollama + Qwen3-TTS)
 Emotional storytelling with LLM reasoning:
 
-**Terminal 1** - Start Ollama:
+**Start Ollama** (if not running):
 ```bash
 ollama serve
 ollama pull llama3  # First time only
 ```
 
-**Terminal 2** - Run Velloris:
+**Run Velloris** (interactive prompt):
 ```bash
 python3 main.py --mode creative --emotion "Speak with excitement"
 ```
+Type your prompts and Velloris responds with emotionally expressive speech.
+
+**WSL2:** Ollama on Windows is auto-detected — no extra configuration needed.
 - 🧠 **LLM reasoning** (Ollama)
 - 🎭 **Emotion control**
 - 🌍 **Multilingual**
@@ -212,28 +231,32 @@ python3 main.py --mode dubbing --script "Your script" --device cpu
 ```
 
 **Features:**
-- 🎨 **Professional quality** (12kHz)
+- 🎨 **Professional quality** (24kHz output)
 - 🌍 **10 languages** (Chinese, English, Japanese, Korean, German, French, Russian, Portuguese, Spanish, Italian)
 - 🎭 **Voice cloning** from 3-second samples
 - 🎨 **Voice design** via natural language
 
 ### Creative Mode Examples
 
-Emotional storytelling with Ollama + Qwen3-TTS:
+Interactive emotional storytelling with Ollama + Qwen3-TTS:
 
 ```bash
-# Start Ollama first
+# Start Ollama first (if not running)
 ollama serve  # In separate terminal
 
-# Basic creative mode
-python3 main.py --mode creative --script "Tell me a story about space"
+# Basic creative mode (interactive prompt)
+python3 main.py --mode creative
 
 # With emotion control
-python3 main.py --mode creative --script "Describe a sunset" --emotion "Speak poetically"
+python3 main.py --mode creative --emotion "Speak poetically"
 
 # Different LLM model
 python3 main.py --mode creative --llm-model mistral --emotion "Excited tone"
+
+# With specific device
+python3 main.py --mode creative --emotion "Speak with warmth" --device cuda
 ```
+Type prompts like "Tell me a story about space" and get voiced responses.
 
 **Features:**
 - 🧠 **LLM reasoning** (Ollama: llama3, mistral, mixtral, etc.)
@@ -298,7 +321,7 @@ Qwen3-TTS (High-Fidelity Synthesis)
   • Voice cloning
   • Emotion control
     ↓
-Audio Output (12kHz) → Speaker 🔊
+Audio Output (24kHz) → Speaker 🔊
 
 Quality: Professional
 Ollama: ❌ Not needed
@@ -315,7 +338,7 @@ Response Text
     ↓
 Qwen3-TTS (Emotional Synthesis)
     ↓
-Audio Output (12kHz) → Speaker 🔊
+Audio Output (24kHz) → Speaker 🔊
 
 Flexibility: High
 Ollama: ✅ Required
@@ -340,10 +363,11 @@ Ollama: ✅ Required
 - **Note**: PersonaPlex runs slower on MPS; Qwen3-TTS works well
 - **MLX-Audio**: Native [MLX](https://ml-explore.github.io/mlx/) backend for optimized TTS on Apple Silicon with RMS normalization, chunk validation, and model caching
 
-### Linux (CPU/CUDA)
+### Linux / WSL2 (CPU/CUDA)
 - **CPU Mode**: Works on any Linux
 - **CUDA Mode**: Requires NVIDIA GPU + CUDA 12.1+
-- **Installation**: Similar to Windows setup
+- **System Dependencies**: `portaudio19-dev ffmpeg sox libasound2-plugins`
+- **WSL2**: Audio routed through PulseAudio/WSLg to Windows speakers. Ollama on Windows is auto-detected via gateway IP
 
 **See [ARCHITECTURE.md](ARCHITECTURE.md#platform-compatibility) for performance comparisons.**
 
@@ -351,23 +375,24 @@ Ollama: ✅ Required
 
 ## 🧪 Testing
 
-Run the test suite:
+Run the full test suite (99 tests):
 
 ```bash
-# All 46 tests
-pytest tests/test_pipeline.py tests/test_critical_paths.py -v
+# All tests
+pytest tests/ -v
 
-# Original integration tests only
-pytest tests/test_pipeline.py -v
-
-# Critical path & platform tests only
-pytest tests/test_critical_paths.py -v
+# By category
+pytest tests/test_pipeline.py -v           # Integration tests (22)
+pytest tests/test_critical_paths.py -v     # Critical path & platform tests (38)
+pytest tests/test_realtime_callbacks.py -v # Audio callback tests (15)
+pytest tests/test_realtime_e2e.py -v       # End-to-end realtime tests (14)
+pytest tests/test_vad_interruption.py -v   # VAD & interruption tests (10)
 
 # With coverage
-pytest tests/test_pipeline.py tests/test_critical_paths.py --cov=. -v
+pytest tests/ --cov=. -v
 ```
 
-**Note**: Tests pass without models installed (stub mode).
+**Note**: Tests pass without models installed (stub mode). 93 pass, 6 skipped (platform-specific).
 
 ---
 
@@ -398,6 +423,16 @@ pytest tests/test_pipeline.py tests/test_critical_paths.py --cov=. -v
 - **MPS/Metal**: Expected to be slower than CUDA
 - **CPU**: Very slow; GPU recommended
 - **Solution**: Use CPU mode with smaller model or wait longer
+
+### WSL2 Audio Not Playing
+- Install PulseAudio and ALSA plugin: `sudo apt-get install -y pulseaudio-utils libasound2-plugins`
+- Configure ALSA default: `echo -e "pcm.default pulse\nctl.default pulse" > ~/.asoundrc`
+- Verify WSLg PulseAudio: `pactl info`
+
+### WSL2 Ollama Connection
+- Ollama on Windows must listen on all interfaces: set `OLLAMA_HOST=0.0.0.0` before running `ollama serve`
+- Add Windows firewall rule: `netsh advfirewall firewall add rule name="Ollama" dir=in action=allow protocol=TCP localport=11434`
+- Velloris auto-detects the Windows host IP — no manual config needed
 
 ---
 
