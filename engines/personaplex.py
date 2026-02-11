@@ -497,41 +497,40 @@ class PersonaPlexEngine:
                 audio_tensor = torch.from_numpy(audio.astype(np.float32))
                 audio_tensor = audio_tensor.to(device=self.device)[None, None]
 
-                # Process audio in chunks (frames)
-                frame_size = self.model["frame_size"]
-                output_frames = []
+                # Encode entire audio to codes at once
+                print(f"   Encoding audio to codes...")
+                codes = self.mimi.encode(audio_tensor)
+                print(f"   Codes shape: {codes.shape}")
 
-                # Process all frames from user audio
-                num_frames = audio_tensor.shape[-1] // frame_size
-                for frame_idx in range(num_frames):
-                    start = frame_idx * frame_size
-                    end = start + frame_size
-                    frame = audio_tensor[:, :, start:end]
+                # Process codes through the language model
+                # This generates the response in one pass (not frame-by-frame)
+                print(f"   Processing with LMGen...")
+                response_codes = self.lm_gen.step(input_tokens=codes)
 
-                    # Encode user audio frame to codes
-                    codes = self.mimi.encode(frame)
+                if response_codes is not None:
+                    print(f"   Response codes shape: {response_codes.shape}")
 
-                    # Process codes through the language model
-                    # codes shape: [batch, code_dims, seq_len]
-                    tokens = self.lm_gen.step(codes)
-
-                    if tokens is not None:
-                        # Decode model output tokens back to audio
-                        # tokens shape: [batch, vocab_size] after step()
-                        # Extract audio codes (skip text dimension at index 0)
-                        output_frame = self.mimi.decode(tokens[:, 1:9])  # Skip text token
-                        output_frame = output_frame.cpu().numpy()
-                        output_frames.append(output_frame[0, 0])  # Extract audio data
-
-                # Concatenate all output frames
-                if output_frames:
-                    agent_audio = np.concatenate(output_frames, axis=0)
+                    # Decode response codes back to audio
+                    print(f"   Decoding to audio...")
+                    agent_audio = self.mimi.decode(response_codes)
+                    agent_audio = agent_audio.cpu().numpy()
                     agent_audio = np.asarray(agent_audio, dtype=np.float32)
+
+                    # Extract audio from batch/channel dimensions
+                    # Shape is typically [batch, channels, samples]
+                    if agent_audio.ndim == 3:
+                        agent_audio = agent_audio[0, 0]
+                    elif agent_audio.ndim == 2:
+                        agent_audio = agent_audio[0]
 
                     # Normalize audio to prevent clipping
                     max_val = np.max(np.abs(agent_audio))
-                    if max_val > 1.0:
-                        agent_audio = agent_audio / max_val
+                    if max_val > 0.0:
+                        # Prevent loudness issues with aggressive normalization
+                        if max_val > 1.0:
+                            agent_audio = agent_audio / max_val * 0.95
+                        # Soft clip if still above 1.0
+                        agent_audio = np.clip(agent_audio, -1.0, 1.0)
 
                     duration = len(agent_audio) / 24000
                     print(f"[OK] Generated {duration:.2f}s of agent speech")

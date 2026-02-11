@@ -164,12 +164,19 @@ class Qwen3TTSEngine:
             # FlashAttention 2 only works on CUDA
             attn_impl = "flash_attention_2" if self.use_flash_attention else None
 
-            # Load model
+            # Load model with proper dtype specification
+            load_kwargs = {
+                "device_map": self.device,
+                "dtype": self.dtype,  # dtype parameter (torch_dtype is deprecated)
+            }
+
+            # Only add attn_implementation if on CUDA to avoid warnings
+            if self.device == "cuda" and attn_impl:
+                load_kwargs["attn_implementation"] = attn_impl
+
             self.model = Qwen3TTSModel.from_pretrained(
                 model_source,
-                device_map=self.device,
-                dtype=self.dtype,
-                attn_implementation=attn_impl if self.device == "cuda" else None,
+                **load_kwargs
             )
 
             print("[OK] Qwen3-TTS model loaded successfully")
