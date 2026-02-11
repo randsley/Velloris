@@ -611,8 +611,8 @@ class TestModelCaching:
         MLXTTSEngine._model_cache.clear()
 
         mock_model = Mock()
-        # Patch at the source where load_model is imported from
-        with patch("mlx_audio.tts.utils.load_model", return_value=mock_model) as mock_load:
+        # Patch at the module level where load_model is already imported
+        with patch("engines.mlx_tts.load_model", return_value=mock_model) as mock_load:
             with patch("engines.mlx_tts.HAS_MLX_AUDIO", True):
                 e1 = MLXTTSEngine(model_name="test-model")
                 e2 = MLXTTSEngine(model_name="test-model")
