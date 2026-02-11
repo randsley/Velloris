@@ -49,8 +49,9 @@ class VoiceAgentBrain:
         if mode == "creative":
             try:
                 from langchain_ollama import OllamaLLM
+                from config import Config
 
-                self.llm = OllamaLLM(model=model_name)
+                self.llm = OllamaLLM(model=model_name, base_url=Config.model.OLLAMA_HOST)
                 print(f"[i]  Brain initialized for creative mode with {model_name}")
             except Exception as e:
                 print(f"[!]  Failed to initialize Ollama: {e}")
@@ -63,7 +64,7 @@ class VoiceAgentBrain:
             print(f"[i]  Brain initialized for {mode} mode")
 
     async def process_voice_turn(
-        self, user_text: str
+        self, user_text: str, emotion: str = ""
     ) -> Tuple[str, Optional[np.ndarray], int]:
         """
         Takes user text, generates LLM response, and optionally synthesizes audio.
@@ -72,6 +73,7 @@ class VoiceAgentBrain:
 
         Args:
             user_text: Transcribed user input
+            emotion: Emotion/style instruction for TTS
 
         Returns:
             Tuple of (response_text, audio_response, sample_rate) where audio_response may be None
@@ -137,13 +139,15 @@ class VoiceAgentBrain:
             except Exception:
                 pass
         elif self.orchestrator is not None:
-            # Use orchestrator's Qwen3-TTS for dubbing
+            # Use orchestrator's TTS — route as dubbing (LLM already done)
+            # but pass emotion as instruct for expressive synthesis
             try:
+                print("[VOICE] Generating speech...")
                 result = self.orchestrator.route_request(
-                    text=full_response, mode="dubbing"
+                    text=full_response, mode="dubbing", emotion=emotion
                 )
                 if result:
-                    audio_response, sample_rate = result  # Extract audio and sr
+                    audio_response, sample_rate = result
             except Exception as e:
                 print(f"[X] TTS error: {e}")
 

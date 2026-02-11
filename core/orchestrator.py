@@ -223,7 +223,7 @@ class LocalVoiceOrchestrator:
             if text is None:
                 print("[X] dubbing mode requires text")
                 return None
-            return self._handle_dubbing(text, ref_audio_path)
+            return self._handle_dubbing(text, ref_audio_path, emotion=emotion)
 
         elif mode == "creative":
             if text is None:
@@ -380,6 +380,7 @@ class LocalVoiceOrchestrator:
         self,
         text: str,
         ref_audio_path: Optional[str] = None,
+        emotion: Optional[str] = None,
     ) -> Optional[Tuple[np.ndarray, int]]:
         """
         Handle dubbing mode: TTS high-fidelity narration.
@@ -390,6 +391,7 @@ class LocalVoiceOrchestrator:
         Args:
             text: Script to narrate
             ref_audio_path: Reference audio for voice cloning
+            emotion: Emotion/style instruction for TTS
 
         Returns:
             Tuple of (audio, sample_rate) or None
@@ -411,12 +413,16 @@ class LocalVoiceOrchestrator:
             else:
                 print("   [!]  Reference not found, using default voice")
 
+        if emotion:
+            print(f"   Emotion: {emotion}")
+
         try:
             result = self.tts_engine.generate_dubbing(
                 text=text,
                 ref_audio_path=ref_audio_path,
                 language=Config.app.DUBBING_LANGUAGE,
-                speaker="Aiden",  # CosyVoice speaker: Aiden, Chelsie, Ethan, Vivian, etc.
+                speaker="Aiden",
+                instruct=emotion or "",
             )
 
             if result:

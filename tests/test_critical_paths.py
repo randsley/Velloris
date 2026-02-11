@@ -359,8 +359,8 @@ class TestOrchestratorModeHandlers:
         # Mock handlers to capture parameters
         handlers_called = {}
 
-        def mock_dubbing(text, ref_audio_path=None):
-            handlers_called["dubbing"] = {"text": text, "ref_audio_path": ref_audio_path}
+        def mock_dubbing(text, ref_audio_path=None, emotion=None):
+            handlers_called["dubbing"] = {"text": text, "ref_audio_path": ref_audio_path, "emotion": emotion}
             return None
 
         def mock_creative(text, emotion=None, ref_audio_path=None):

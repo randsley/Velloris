@@ -64,7 +64,36 @@ class ModelConfig:
 
     # LLM settings (Ollama)
     OLLAMA_MODEL = os.getenv("OLLAMA_MODEL", "llama3")
-    OLLAMA_HOST = os.getenv("OLLAMA_HOST", "http://localhost:11434")
+
+    # Auto-detect Ollama host: if running in WSL2 with Ollama on Windows,
+    # use the WSL2 gateway IP to reach the Windows host
+    @staticmethod
+    def _detect_ollama_host():
+        explicit = os.getenv("OLLAMA_HOST")
+        if explicit:
+            return explicit
+        # Check if WSL2 and Ollama isn't available on localhost
+        if os.path.exists("/proc/sys/fs/binfmt_misc/WSLInterop"):
+            try:
+                with open("/etc/resolv.conf") as f:
+                    for line in f:
+                        if line.startswith("nameserver"):
+                            wsl_host = line.split()[1]
+                            # Try gateway IP instead (more reliable for WSL2)
+                            import subprocess
+                            result = subprocess.run(
+                                ["ip", "route", "show", "default"],
+                                capture_output=True, text=True, timeout=2
+                            )
+                            if result.returncode == 0:
+                                gateway = result.stdout.split()[2]
+                                return f"http://{gateway}:11434"
+                            return f"http://{wsl_host}:11434"
+            except Exception:
+                pass
+        return "http://localhost:11434"
+
+    OLLAMA_HOST = _detect_ollama_host()
 
     # TTS settings
     TTS_MODEL = "1.7B-CustomVoice"  # Qwen3-TTS variant

@@ -271,7 +271,9 @@ class VellorisApplication:
                 # Process with brain (creative mode needs brain)
                 if self.brain:
                     print("\nVelloris: Processing...")
-                    result = await self.brain.process_voice_turn(user_input)
+                    result = await self.brain.process_voice_turn(
+                        user_input, emotion=getattr(self.args, "emotion", "")
+                    )
 
                     if isinstance(result, tuple) and len(result) == 3:
                         # New format: (response_text, audio, sample_rate)
