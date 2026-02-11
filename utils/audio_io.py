@@ -68,11 +68,22 @@ def play_audio(audio_data: np.ndarray, samplerate: int = 24000) -> None:
             player.stop()
             print("[OK] Playback complete")
         else:
-            # Fallback to sounddevice
-            print("[AUDIO] Using sounddevice (mlx-audio not available)")
-            sd.play(audio_data, samplerate=samplerate)
-            sd.wait()
-            print("[OK] Playback complete")
+            # Try sounddevice first, fall back to sox
+            try:
+                sd.play(audio_data, samplerate=samplerate)
+                sd.wait()
+                print("[OK] Playback complete")
+            except Exception:
+                # Fallback to sox (play command)
+                import subprocess
+                import tempfile
+                import soundfile as sf
+                print("[AUDIO] Using sox for playback")
+                with tempfile.NamedTemporaryFile(suffix=".wav", delete=True) as tmp:
+                    sf.write(tmp.name, audio_data, samplerate)
+                    subprocess.run(["play", tmp.name], check=True,
+                                   stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+                print("[OK] Playback complete")
     except Exception as e:
         print(f"[X] Playback error: {e}")
 

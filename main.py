@@ -365,7 +365,13 @@ class VellorisApplication:
                 audio, sr = result
                 print(f"[OK] Generated {len(audio) / sr:.2f} seconds of audio")
 
-                # Play the generated audio
+                # Save to WAV file
+                import soundfile as sf
+                output_path = Path("output.wav")
+                sf.write(str(output_path), audio, sr)
+                print(f"[OK] Saved to {output_path.resolve()}")
+
+                # Try to play the generated audio
                 print()
                 play_audio(audio, samplerate=sr)
             else:

@@ -174,10 +174,22 @@ class Qwen3TTSEngine:
             if self.device == "cuda" and attn_impl:
                 load_kwargs["attn_implementation"] = attn_impl
 
+            # Suppress noisy warnings during model load:
+            # - FA2 dtype warning (config.dtype is None during __init__)
+            # - TP sharding warnings (irrelevant on single GPU)
+            import logging
+            _suppressed_loggers = [
+                "transformers.modeling_utils",
+                "transformers.integrations.tensor_parallel",
+            ]
+            for name in _suppressed_loggers:
+                logging.getLogger(name).setLevel(logging.ERROR)
             self.model = Qwen3TTSModel.from_pretrained(
                 model_source,
                 **load_kwargs
             )
+            for name in _suppressed_loggers:
+                logging.getLogger(name).setLevel(logging.WARNING)
 
             print("[OK] Qwen3-TTS model loaded successfully")
             print(f"   Device: {self.device}, Dtype: {str(self.dtype).split('.')[-1]}")

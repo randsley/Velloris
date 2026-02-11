@@ -27,6 +27,7 @@ Manages engine lifecycle with lazy loading for memory efficiency.
 Platform-aware: Automatically selects optimal engines (S2S, TTS) per platform.
 """
 
+import logging
 import numpy as np
 from typing import Optional, Tuple
 from pathlib import Path
@@ -34,6 +35,9 @@ import sys
 
 from config import Config
 from utils.device_utils import get_optimal_device, get_platform_info
+
+# Suppress noisy TP sharding warnings (irrelevant on single GPU)
+logging.getLogger("transformers.integrations.tensor_parallel").setLevel(logging.ERROR)
 
 # Conditional import for S2S engine based on platform
 if sys.platform == "darwin":
