@@ -118,7 +118,7 @@ class VellorisApplication:
 
     def _signal_handler(self, sig, frame):
         """Handle graceful shutdown on Ctrl+C."""
-        print("\n\n⏸ Shutting down Velloris...")
+        print("\n\n[SHUTDOWN] Shutting down Velloris...")
         self.cleanup()
         sys.exit(0)
 
@@ -129,7 +129,7 @@ class VellorisApplication:
             self.orchestrator.unload_engines()
         if hasattr(self, "audio_controller") and self.audio_controller:
             self.audio_controller.stop_transcription_worker()
-        print("✓ Cleanup complete")
+        print("[OK] Cleanup complete")
 
     async def run_realtime(self):
         """
@@ -139,7 +139,7 @@ class VellorisApplication:
         User can interrupt the agent at any time with barge-in.
         """
         print("\n" + "=" * 60)
-        print("🎤 VELLORIS - REALTIME MODE")
+        print("[MIC] VELLORIS - REALTIME MODE")
         print("=" * 60)
         print("Starting voice agent in real-time mode...")
         print("The agent will listen and respond to your voice.")
@@ -175,8 +175,8 @@ class VellorisApplication:
         input_device_info = sd.query_devices(input_device, kind="input")
         output_device_info = sd.query_devices(output_device, kind="output")
 
-        print(f"🎙️  Input: {input_device_info['name']}")
-        print(f"🔊 Output: {output_device_info['name']}")
+        print(f"[INPUT] Input: {input_device_info['name']}")
+        print(f"[OUTPUT] Output: {output_device_info['name']}")
         print()
 
         # Start background transcription worker
@@ -199,9 +199,9 @@ class VellorisApplication:
                 dtype="float32",
                 device=output_device,
             ):
-                print("✅ Session active. Listening...\n")
-                print("💬 Speak naturally - I'll respond when you pause.")
-                print("✋ You can interrupt me at any time (barge-in enabled).\n")
+                print("[OK] Session active. Listening...\n")
+                print("[INPUT] Speak naturally - I'll respond when you pause.")
+                print("[BARGE-IN] You can interrupt me at any time (barge-in enabled).\n")
 
                 # Main processing loop
                 while self.running:
@@ -244,7 +244,7 @@ class VellorisApplication:
                     await asyncio.sleep(0.05)  # Check every 50ms
 
         finally:
-            print("\n🛑 Stopping audio session...")
+            print("\n[STOP] Stopping audio session...")
             self.audio_controller.stop_transcription_worker()
 
     async def _demo_realtime_mode(self):
@@ -306,7 +306,7 @@ class VellorisApplication:
         LLM-powered emotional synthesis using Ollama + Qwen3-TTS.
         """
         print("\n" + "=" * 60)
-        print("🎨 VELLORIS - CREATIVE MODE")
+        print("[CREATIVE] VELLORIS - CREATIVE MODE")
         print("=" * 60)
         print("Starting voice agent in creative mode...")
         print("Type your prompts and get emotional voice responses.")
@@ -332,7 +332,7 @@ class VellorisApplication:
         Supports voice cloning with reference audio.
         """
         print("\n" + "=" * 60)
-        print("🎬 VELLORIS - DUBBING MODE")
+        print("[DUBBING] VELLORIS - DUBBING MODE")
         print("=" * 60)
 
         script = self.args.script
@@ -363,7 +363,7 @@ class VellorisApplication:
 
             if result:
                 audio, sr = result
-                print(f"✓ Generated {len(audio) / sr:.2f} seconds of audio")
+                print(f"[OK] Generated {len(audio) / sr:.2f} seconds of audio")
 
                 # Play the generated audio
                 print()
@@ -381,7 +381,7 @@ class VellorisApplication:
 
     async def run(self):
         """Run the application based on mode."""
-        print("\n🚀 Starting Velloris...")
+        print("\n[STARTUP] Starting Velloris...")
         print(f"   Mode: {self.args.mode}")
         print(f"   Device: {self.args.device}")
         print(f"   LLM: {self.args.llm_model}")
